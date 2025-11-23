@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useWallet } from '@/contexts/wallet-context';
 import { useMultipleDeposits, type DepositInfo } from '@/hooks/use-multiple-deposits';
 import { convertOptionToLabel } from '@/lib/lock-options';
@@ -13,7 +13,45 @@ export default function WithdrawPage() {
   const { user, isConnected } = useWallet();
   const hookResult = useMultipleDeposits();
   
-  // Safety check for hook initialization
+  const { 
+    getAllUserDeposits, 
+    withdrawDeposit, 
+    getTotalBalance,
+    error: hookError 
+  } = hookResult || {};
+  
+  const [deposits, setDeposits] = useState<DepositInfo[]>([]);
+  const [totalBalance, setTotalBalance] = useState<number>(0);
+  const [currentBlock, setCurrentBlock] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState(true); // Start as true to prevent flash
+  const [error, setError] = useState<string>('');
+  const [success, setSuccess] = useState<string>('');
+  const [actionLoading, setActionLoading] = useState<{ [key: string]: boolean }>({});
+  const isFetchingRef = useRef(false);
+  
+  // Form states for withdrawal
+  const [withdrawAmounts, setWithdrawAmounts] = useState<{ [key: number]: string }>({});
+  const [showWithdrawForm, setShowWithdrawForm] = useState<{ [key: number]: boolean }>({});
+  
+  // Refresh trigger for manual refreshes
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  
+  // Calculate statistics with memoization to prevent unnecessary re-renders
+  // MUST be before any conditional returns to follow Rules of Hooks
+  const unlockedDeposits = useMemo(() => 
+    deposits.filter(d => d && !d.isLocked && !d.withdrawn), 
+    [deposits]
+  );
+  const lockedDeposits = useMemo(() => 
+    deposits.filter(d => d && d.isLocked && !d.withdrawn), 
+    [deposits]
+  );
+  const withdrawnDeposits = useMemo(() => 
+    deposits.filter(d => d && d.withdrawn), 
+    [deposits]
+  );
+  
+  // Safety check for hook initialization - AFTER all hooks
   if (!hookResult) {
     console.error('❌ useMultipleDeposits hook not initialized');
     return (
@@ -27,41 +65,31 @@ export default function WithdrawPage() {
       </div>
     );
   }
-  
-  const { 
-    getAllUserDeposits, 
-    withdrawDeposit, 
-    getTotalBalance,
-    error: hookError 
-  } = hookResult;
-  
-  const [deposits, setDeposits] = useState<DepositInfo[]>([]);
-  const [totalBalance, setTotalBalance] = useState<number>(0);
-  const [currentBlock, setCurrentBlock] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState(true); // Start as true to prevent flash
-  const [error, setError] = useState<string>('');
-  const [success, setSuccess] = useState<string>('');
-  const [actionLoading, setActionLoading] = useState<{ [key: string]: boolean }>({});
-  
-  // Form states for withdrawal
-  const [withdrawAmounts, setWithdrawAmounts] = useState<{ [key: number]: string }>({});
-  const [showWithdrawForm, setShowWithdrawForm] = useState<{ [key: number]: boolean }>({});
 
 
 
   // Load user's deposits
   useEffect(() => {
     const loadDeposits = async () => {
-      if (!user?.address) {
-        console.log('⚠️ No user connected');
+      // Don't proceed if wallet is not connected or user address is not available
+      if (!isConnected || !user?.address) {
+        console.log('⚠️ Wallet not connected or no user address');
         setDeposits([]);
         setTotalBalance(0);
         setCurrentBlock(0);
         setIsLoading(false);
+        isFetchingRef.current = false;
+        return;
+      }
+
+      // Prevent concurrent fetches
+      if (isFetchingRef.current) {
+        console.log('⚠️ Withdraw Page: Already fetching, skipping...');
         return;
       }
 
       console.log('🔄 Loading deposits for user:', user.address);
+      isFetchingRef.current = true;
       setIsLoading(true);
       setError('');
       
@@ -74,8 +102,9 @@ export default function WithdrawPage() {
         const { getCurrentBlockHeight, getUserDeposit, isUserLocked, getRemainingLockBlocks } = await import('@/lib/contract');
         
         console.log('📡 Calling contract functions...');
+        // Force fresh fetch on initial load
         const [userDeposits, balance, blockHeight] = await Promise.all([
-          getAllUserDeposits(),
+          getAllUserDeposits(true), // Force refresh on initial load
           getTotalBalance(),
           getCurrentBlockHeight(),
         ]);
@@ -157,12 +186,100 @@ export default function WithdrawPage() {
         setDeposits([]);
       } finally {
         setIsLoading(false);
+        isFetchingRef.current = false;
         console.log('🏁 Loading complete');
       }
     };
 
-    loadDeposits();
-  }, [user?.address, getAllUserDeposits, getTotalBalance]);
+    // Only load deposits when wallet is connected and user address is available
+    if (isConnected && user?.address) {
+      console.log('✅ Withdraw Page: Wallet connected, loading deposits immediately');
+      loadDeposits();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected, user?.address, refreshTrigger]); // Hook functions are now stable (use refs), intentionally excluded
+
+  // Set up polling to refresh deposits every 15 seconds when user is connected
+  // Increased from 5s to 15s to reduce flickering and API load
+  useEffect(() => {
+    if (!isConnected || !user?.address) return;
+
+    console.log('📊 Withdraw Page: Setting up auto-refresh polling (15s interval)');
+    const intervalId = setInterval(async () => {
+      console.log('📊 Withdraw Page: Auto-refreshing deposits...');
+      
+      // Prevent concurrent fetches
+      if (isFetchingRef.current) {
+        console.log('📊 Withdraw Page: Already fetching, skipping auto-refresh...');
+        return;
+      }
+
+      isFetchingRef.current = true;
+      
+      try {
+        const { getCurrentBlockHeight, getUserDeposit, isUserLocked, getRemainingLockBlocks } = await import('@/lib/contract');
+        
+        // Use forceRefresh=false to allow caching in the hook
+        const [userDeposits, balance, blockHeight] = await Promise.all([
+          getAllUserDeposits(false), // Use cache if available
+          getTotalBalance(),
+          getCurrentBlockHeight(),
+        ]);
+        
+        let safeUserDeposits = Array.isArray(userDeposits) ? userDeposits : [];
+        
+        // Check for legacy deposit if no multiple deposits found
+        if (safeUserDeposits.length === 0 && user?.address) {
+          try {
+            const legacyDeposit = await getUserDeposit(user.address);
+            if (legacyDeposit && legacyDeposit.amount > 0) {
+              const isLocked = await isUserLocked(user.address);
+              const remainingBlocks = await getRemainingLockBlocks(user.address);
+              
+              const legacyDepositInfo: DepositInfo = {
+                depositId: 0,
+                amount: legacyDeposit.amount,
+                depositBlock: legacyDeposit.depositBlock,
+                lockExpiry: legacyDeposit.lockExpiry || 0,
+                lockOption: legacyDeposit.lockOption || 0,
+                withdrawn: false,
+                isLocked: isLocked,
+                remainingBlocks: remainingBlocks,
+                name: 'Legacy Deposit',
+              };
+              
+              safeUserDeposits = [legacyDepositInfo];
+            }
+          } catch (legacyErr) {
+            console.error('❌ Error checking legacy deposit:', legacyErr);
+          }
+        }
+        
+        const sortedDeposits = safeUserDeposits.sort((a, b) => {
+          if (!a || !b) return 0;
+          if (a.withdrawn !== b.withdrawn) return a.withdrawn ? 1 : -1;
+          if (a.isLocked !== b.isLocked) return a.isLocked ? 1 : -1;
+          return a.remainingBlocks - b.remainingBlocks;
+        });
+        
+        console.log('📊 Withdraw Page: Auto-refresh loaded', sortedDeposits.length, 'deposits');
+        
+        setDeposits(sortedDeposits);
+        setTotalBalance(balance);
+        setCurrentBlock(blockHeight);
+      } catch (err) {
+        console.error('❌ Withdraw Page: Auto-refresh error:', err);
+      } finally {
+        isFetchingRef.current = false;
+      }
+    }, 15000); // Refresh every 15 seconds (increased from 5s)
+
+    return () => {
+      console.log('📊 Withdraw Page: Cleaning up auto-refresh polling');
+      clearInterval(intervalId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected, user?.address]); // Hook functions are now stable (use refs), intentionally excluded
 
   // Handle withdrawal
   const handleWithdraw = async (depositId: number) => {
@@ -213,30 +330,9 @@ export default function WithdrawPage() {
         setWithdrawAmounts(prev => ({ ...prev, [depositId]: '' }));
         setShowWithdrawForm(prev => ({ ...prev, [depositId]: false }));
         
-        // Refresh deposits data after a short delay
-        setTimeout(async () => {
-          try {
-            const { getCurrentBlockHeight } = await import('@/lib/contract');
-            const [userDeposits, balance, blockHeight] = await Promise.all([
-              getAllUserDeposits(),
-              getTotalBalance(),
-              getCurrentBlockHeight(),
-            ]);
-            
-            const sortedDeposits = userDeposits.sort((a, b) => {
-              if (a.withdrawn !== b.withdrawn) return a.withdrawn ? 1 : -1;
-              if (a.isLocked !== b.isLocked) return a.isLocked ? 1 : -1;
-              return a.remainingBlocks - b.remainingBlocks;
-            });
-            
-            setDeposits(sortedDeposits);
-            setTotalBalance(balance);
-            setCurrentBlock(blockHeight);
-            console.log('✅ Deposits refreshed after withdrawal');
-          } catch (refreshErr) {
-            console.error('⚠️ Error refreshing deposits:', refreshErr);
-          }
-        }, 2000);
+        // Trigger immediate refresh
+        console.log('✅ Withdrawal successful, triggering immediate refresh');
+        setRefreshTrigger(prev => prev + 1);
       }
     } catch (err) {
       console.error('❌ Withdrawal error:', err);
@@ -277,11 +373,6 @@ export default function WithdrawPage() {
       </div>
     );
   }
-
-  // Calculate statistics
-  const unlockedDeposits = deposits.filter(d => d && !d.isLocked && !d.withdrawn);
-  const lockedDeposits = deposits.filter(d => d && d.isLocked && !d.withdrawn);
-  const withdrawnDeposits = deposits.filter(d => d && d.withdrawn);
 
   return (
     <div className="min-h-screen bg-gray-900 py-8">

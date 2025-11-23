@@ -9,9 +9,7 @@ import {
   stringAsciiCV,
   someCV,
   noneCV,
-  PostConditionMode, 
-  makeStandardSTXPostCondition,
-  FungibleConditionCode,
+  PostConditionMode,
   type ClarityValue 
 } from '@stacks/transactions';
 import { 

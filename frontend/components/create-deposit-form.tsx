@@ -88,8 +88,10 @@ export default function CreateDepositForm({ onDepositCreated, onCancel }: Create
       await createDepositTransaction({
         amount: depositAmount,
         lockOption: formData.lockOption,
+        name: formData.name || undefined,
         userAddress: user?.address || '',
         onFinish: (data) => {
+          console.log('✅ Deposit transaction submitted:', data.txId);
           setSuccess(`Deposit created successfully! Transaction ID: ${data.txId}`);
           
           // Reset form
@@ -99,8 +101,9 @@ export default function CreateDepositForm({ onDepositCreated, onCancel }: Create
             name: '',
           });
 
-          // Notify parent component
+          // Notify parent component immediately to trigger refresh
           if (onDepositCreated) {
+            console.log('🔄 Triggering parent refresh after deposit creation');
             onDepositCreated(0);
           }
         },

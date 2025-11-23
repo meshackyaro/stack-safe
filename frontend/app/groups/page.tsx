@@ -20,7 +20,7 @@ export default function GroupsPage() {
   if (!isConnected) {
     return (
       <div className="min-h-screen bg-gray-900 py-8">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 4rem)' }}>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
           <div className="text-center">
             <h1 className="text-3xl font-bold text-white mb-2">Group Savings</h1>
             <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
@@ -90,7 +90,7 @@ export default function GroupsPage() {
 
   return (
     <div className="min-h-screen bg-gray-900 py-8">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 4rem)' }}>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">Group Savings</h1>

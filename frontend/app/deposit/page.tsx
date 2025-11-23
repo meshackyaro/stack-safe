@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import DepositsDashboard from '@/components/deposits-dashboard';
 import CreateDepositForm from '@/components/create-deposit-form';
 import PriceSyncStatus from '@/components/price-sync-status';
@@ -13,8 +13,11 @@ import PriceUpdateNotification from '@/components/price-update-notification';
 
 export default function DepositPage() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'create'>('dashboard');
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const handleDepositCreated = () => {
+    // Trigger a refresh of the dashboard
+    setRefreshTrigger(prev => prev + 1);
     // Switch back to dashboard after creating a deposit
     setActiveTab('dashboard');
   };
@@ -73,6 +76,7 @@ export default function DepositPage() {
         {activeTab === 'dashboard' && (
           <DepositsDashboard 
             onCreateDeposit={() => setActiveTab('create')}
+            refreshTrigger={refreshTrigger}
           />
         )}
 

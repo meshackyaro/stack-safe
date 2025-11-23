@@ -5,16 +5,17 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useWallet } from '@/contexts/wallet-context';
 import { useMultipleDeposits, type DepositInfo } from '@/hooks/use-multiple-deposits';
 import { getLockDurationOptions, convertOptionToLabel, formatRemainingTime } from '@/lib/lock-options';
 
 interface DepositsDashboardProps {
   onCreateDeposit?: () => void;
+  refreshTrigger?: number;
 }
 
-export default function DepositsDashboard({ onCreateDeposit }: DepositsDashboardProps) {
+export default function DepositsDashboard({ onCreateDeposit, refreshTrigger }: DepositsDashboardProps) {
   const { user, isConnected } = useWallet();
   const { 
     getAllUserDeposits, 
@@ -31,6 +32,7 @@ export default function DepositsDashboard({ onCreateDeposit }: DepositsDashboard
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
   const [actionLoading, setActionLoading] = useState<{ [key: string]: boolean }>({});
+  const isFetchingRef = useRef(false);
   
   // Form states for withdrawal
   const [withdrawAmounts, setWithdrawAmounts] = useState<{ [key: number]: string }>({});
@@ -39,24 +41,39 @@ export default function DepositsDashboard({ onCreateDeposit }: DepositsDashboard
   // Get lock duration options for display
   const lockOptions = getLockDurationOptions();
 
-  // Load user's deposits
+  // Load deposits immediately when user connects or refresh is triggered
   useEffect(() => {
     const loadDeposits = async () => {
-      if (!user) {
+      if (!isConnected || !user?.address) {
+        console.log('📊 Dashboard: No user, clearing deposits');
         setDeposits([]);
         setTotalBalance(0);
         setActiveCount(0);
         setIsLoading(false);
+        isFetchingRef.current = false;
         return;
       }
 
+      // Prevent concurrent fetches
+      if (isFetchingRef.current) {
+        console.log('📊 Dashboard: Already fetching, skipping...');
+        return;
+      }
+
+      console.log('📊 Dashboard: Loading deposits for user:', user.address);
+      isFetchingRef.current = true;
       setIsLoading(true);
+      setError('');
+      
       try {
+        // Force fresh fetch on initial load
         const [userDeposits, balance, count] = await Promise.all([
-          getAllUserDeposits(),
+          getAllUserDeposits(true), // Force refresh on initial load
           getTotalBalance(),
           getActiveDepositCount(),
         ]);
+        
+        console.log('📊 Dashboard: Loaded', userDeposits.length, 'deposits, balance:', balance);
         
         // Sort deposits by creation time (newest first)
         const sortedDeposits = userDeposits.sort((a, b) => b.depositBlock - a.depositBlock);
@@ -65,15 +82,66 @@ export default function DepositsDashboard({ onCreateDeposit }: DepositsDashboard
         setTotalBalance(balance);
         setActiveCount(count);
       } catch (err) {
-        console.error('Error loading deposits:', err);
+        console.error('❌ Dashboard: Error loading deposits:', err);
         setError('Failed to load your deposits');
       } finally {
         setIsLoading(false);
+        isFetchingRef.current = false;
       }
     };
 
-    loadDeposits();
-  }, [user, getAllUserDeposits, getTotalBalance, getActiveDepositCount]);
+    if (isConnected && user?.address) {
+      console.log('📊 Dashboard: User connected, loading deposits immediately');
+      loadDeposits();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected, user?.address, refreshTrigger]); // Hook functions are now stable (use refs), intentionally excluded
+
+  // Set up polling to refresh deposits every 15 seconds when user is connected
+  // Increased from 5s to 15s to reduce flickering and API load
+  useEffect(() => {
+    if (!isConnected || !user?.address) return;
+
+    console.log('📊 Dashboard: Setting up auto-refresh polling (15s interval)');
+    const intervalId = setInterval(async () => {
+      console.log('📊 Dashboard: Auto-refreshing deposits...');
+      
+      // Prevent concurrent fetches
+      if (isFetchingRef.current) {
+        console.log('📊 Dashboard: Already fetching, skipping auto-refresh...');
+        return;
+      }
+
+      isFetchingRef.current = true;
+      
+      try {
+        // Use forceRefresh=false to allow caching in the hook
+        const [userDeposits, balance, count] = await Promise.all([
+          getAllUserDeposits(false), // Use cache if available
+          getTotalBalance(),
+          getActiveDepositCount(),
+        ]);
+        
+        console.log('📊 Dashboard: Auto-refresh loaded', userDeposits.length, 'deposits');
+        
+        const sortedDeposits = userDeposits.sort((a, b) => b.depositBlock - a.depositBlock);
+        
+        setDeposits(sortedDeposits);
+        setTotalBalance(balance);
+        setActiveCount(count);
+      } catch (err) {
+        console.error('❌ Dashboard: Auto-refresh error:', err);
+      } finally {
+        isFetchingRef.current = false;
+      }
+    }, 15000); // Refresh every 15 seconds (increased from 5s)
+
+    return () => {
+      console.log('📊 Dashboard: Cleaning up auto-refresh polling');
+      clearInterval(intervalId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected, user?.address]); // Hook functions are now stable (use refs), intentionally excluded
 
   // Handle withdrawal
   const handleWithdraw = async (depositId: number) => {
@@ -164,10 +232,19 @@ export default function DepositsDashboard({ onCreateDeposit }: DepositsDashboard
     );
   }
 
-  // Calculate statistics
-  const lockedDeposits = deposits.filter(d => d.isLocked && !d.withdrawn).length;
-  const unlockedDeposits = deposits.filter(d => !d.isLocked && !d.withdrawn).length;
-  const withdrawnDeposits = deposits.filter(d => d.withdrawn).length;
+  // Calculate statistics with memoization to prevent unnecessary re-renders
+  const lockedDeposits = useMemo(() => 
+    deposits.filter(d => d.isLocked && !d.withdrawn).length, 
+    [deposits]
+  );
+  const unlockedDeposits = useMemo(() => 
+    deposits.filter(d => !d.isLocked && !d.withdrawn).length, 
+    [deposits]
+  );
+  const withdrawnDeposits = useMemo(() => 
+    deposits.filter(d => d.withdrawn).length, 
+    [deposits]
+  );
 
   return (
     <div className="space-y-6">

@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useStacks } from './use-stacks';
 import { 
   uintCV,
@@ -56,6 +56,14 @@ export const useMultipleDeposits = () => {
   const { user, userSession, isConnected } = useStacks();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Store user address in a ref to prevent function recreation
+  const userAddressRef = useRef<string | undefined>(user?.address);
+  
+  // Update ref when user address changes
+  useEffect(() => {
+    userAddressRef.current = user?.address;
+  }, [user?.address]);
 
   /**
    * Create a new deposit with independent lock period
@@ -98,7 +106,7 @@ export const useMultipleDeposits = () => {
       const network = getStacksNetwork();
       
       // Validate network configuration
-      if (!network || !network.coreApiUrl) {
+      if (!network) {
         throw new Error('Network configuration is invalid. Please check your environment settings.');
       }
 
@@ -121,7 +129,7 @@ export const useMultipleDeposits = () => {
 
       // Log transaction details for debugging
       console.log('Creating deposit transaction:', {
-        network: network.coreApiUrl,
+        network: 'coreApiUrl' in network ? network.coreApiUrl : 'url' in network ? network.url : 'unknown',
         contractAddress: CONTRACT_CONFIG.address,
         contractName: CONTRACT_CONFIG.name,
         functionName: 'create-deposit',
@@ -236,22 +244,24 @@ export const useMultipleDeposits = () => {
 
   /**
    * Get all deposit IDs for the current user
+   * ALWAYS fetches fresh data from the blockchain - no caching
    * @returns Promise<number[]> - Array of deposit IDs
    */
   const getUserDepositIds = useCallback(async (): Promise<number[]> => {
-    if (!user?.address) {
+    const currentUserAddress = userAddressRef.current;
+    if (!currentUserAddress) {
       console.log('⚠️ getUserDepositIds: No user connected');
       return [];
     }
 
     try {
-      console.log('🔍 Fetching deposit IDs for user:', user.address);
+      console.log('🔍 Fetching deposit IDs for user:', currentUserAddress, '(fresh from blockchain)');
       
       const result = await callReadOnlyFunction({
         contractAddress: CONTRACT_CONFIG.address,
         contractName: CONTRACT_CONFIG.name,
         functionName: 'get-user-deposit-ids',
-        functionArgs: [standardPrincipalCV(user.address)],
+        functionArgs: [standardPrincipalCV(currentUserAddress)],
       });
 
       console.log('📦 Raw Clarity Value from get-user-deposit-ids:', result);
@@ -259,6 +269,15 @@ export const useMultipleDeposits = () => {
       // Parse the Clarity Value using cvToJSON
       const data = cvToJSON(result);
       console.log('📦 Parsed JSON data:', JSON.stringify(data, null, 2));
+      
+      // Helper to recursively extract value
+      const extractValue = (obj: any): any => {
+        if (obj === null || obj === undefined) return obj;
+        if (typeof obj === 'object' && 'value' in obj) {
+          return extractValue(obj.value);
+        }
+        return obj;
+      };
       
       // The contract returns a tuple: { deposit-ids: (list uint) }
       // After cvToJSON, it should be: { type: 'tuple', value: { 'deposit-ids': { type: 'list', value: [...] } } }
@@ -268,10 +287,13 @@ export const useMultipleDeposits = () => {
         if (tupleData && typeof tupleData === 'object' && 'deposit-ids' in tupleData) {
           const depositIdsField = tupleData['deposit-ids'];
           
-          // Extract the list value
-          const depositIdsList = depositIdsField && typeof depositIdsField === 'object' && 'value' in depositIdsField 
-            ? depositIdsField.value 
-            : depositIdsField;
+          // Extract the list value - handle nested value objects
+          let depositIdsList = extractValue(depositIdsField);
+          
+          // If it's still an object with value, extract again
+          if (depositIdsList && typeof depositIdsList === 'object' && 'value' in depositIdsList) {
+            depositIdsList = depositIdsList.value;
+          }
           
           if (Array.isArray(depositIdsList)) {
             if (depositIdsList.length === 0) {
@@ -281,9 +303,11 @@ export const useMultipleDeposits = () => {
             
             // Each item in the list is a uint CV: { type: 'uint', value: '123' }
             const mappedIds = depositIdsList.map((item: any) => {
-              const value = item && typeof item === 'object' && 'value' in item ? item.value : item;
-              return Number(value);
-            });
+              const value = extractValue(item);
+              const numValue = Number(value);
+              console.log(`  📌 Mapping deposit ID: ${item} -> ${value} -> ${numValue}`);
+              return numValue;
+            }).filter(id => !isNaN(id) && id > 0); // Filter out invalid IDs
             
             console.log('✅ Found deposit IDs:', mappedIds);
             return mappedIds;
@@ -297,7 +321,7 @@ export const useMultipleDeposits = () => {
       console.error('❌ Error fetching user deposit IDs:', err);
       return [];
     }
-  }, [user?.address]);
+  }, []); // No dependencies - uses ref
 
   /**
    * Get detailed information for a specific deposit
@@ -305,13 +329,14 @@ export const useMultipleDeposits = () => {
    * @returns Promise<DepositInfo | null>
    */
   const getDepositInfo = useCallback(async (depositId: number): Promise<DepositInfo | null> => {
-    if (!user?.address) {
+    const currentUserAddress = userAddressRef.current;
+    if (!currentUserAddress) {
       console.log(`⚠️ getDepositInfo: No user connected for deposit #${depositId}`);
       return null;
     }
 
     try {
-      console.log(`🔍 Fetching info for deposit #${depositId} for user:`, user.address);
+      console.log(`🔍 Fetching info for deposit #${depositId} for user:`, currentUserAddress);
       
       const [depositResult, isLockedResult, remainingBlocksResult] = await Promise.all([
         callReadOnlyFunction({
@@ -319,7 +344,7 @@ export const useMultipleDeposits = () => {
           contractName: CONTRACT_CONFIG.name,
           functionName: 'get-user-deposit',
           functionArgs: [
-            standardPrincipalCV(user.address),
+            standardPrincipalCV(currentUserAddress),
             uintCV(depositId),
           ],
         }),
@@ -328,7 +353,7 @@ export const useMultipleDeposits = () => {
           contractName: CONTRACT_CONFIG.name,
           functionName: 'is-deposit-locked',
           functionArgs: [
-            standardPrincipalCV(user.address),
+            standardPrincipalCV(currentUserAddress),
             uintCV(depositId),
           ],
         }),
@@ -337,78 +362,209 @@ export const useMultipleDeposits = () => {
           contractName: CONTRACT_CONFIG.name,
           functionName: 'get-deposit-remaining-blocks',
           functionArgs: [
-            standardPrincipalCV(user.address),
+            standardPrincipalCV(currentUserAddress),
             uintCV(depositId),
           ],
         }),
       ]);
 
       const depositData = cvToJSON(depositResult);
-      console.log(`📦 Raw depositData for #${depositId}:`, depositData);
+      console.log(`📦 Raw depositData for #${depositId}:`, JSON.stringify(depositData, null, 2));
       
-      if (!depositData || !depositData.value) {
-        console.log(`⚠️ No data found for deposit #${depositId}`);
+      // Check if deposit exists - map-get? returns (optional ...) which becomes null or { value: ... }
+      // The contract KEEPS withdrawn deposits in the map, so we should still fetch them
+      if (!depositData || depositData.type === 'none' || depositData.value === null) {
+        console.log(`⚠️ No data found for deposit #${depositId} - deposit does not exist in contract`);
         return null;
       }
 
-      const data = depositData.value;
+      // For optional types, the actual data is in depositData.value.value
+      // Structure: { type: 'some', value: { type: 'tuple', value: { amount: ..., ... } } }
+      let data = depositData.value;
+      
+      // If it's wrapped in another value object (from 'some'), unwrap it
+      if (data && typeof data === 'object' && 'value' in data && data.type === 'tuple') {
+        data = data.value;
+      } else if (data && typeof data === 'object' && 'value' in data) {
+        data = data.value;
+      }
+      
       const isLockedData = cvToJSON(isLockedResult);
       const remainingBlocksData = cvToJSON(remainingBlocksResult);
       
       console.log(`📦 Extracted data for #${depositId}:`, { data, isLockedData, remainingBlocksData });
 
-      // Helper function to safely extract value
+      // Helper function to safely extract value - recursively unwrap nested value objects
       const extractValue = (obj: any): any => {
-        if (obj === null || obj === undefined) return obj;
-        if (typeof obj === 'object' && 'value' in obj) return obj.value;
+        if (obj === null || obj === undefined) {
+          console.log(`  ⚠️ extractValue got null/undefined`);
+          return null; // Return null instead of 0 to detect missing values
+        }
+        
+        // If it's an object with a 'value' property, recursively extract
+        if (typeof obj === 'object' && 'value' in obj) {
+          return extractValue(obj.value);
+        }
+        
+        // If it's already a primitive, return it
         return obj;
       };
 
+      // Extract and convert values with proper type handling
+      const amountValue = extractValue(data.amount);
+      const depositBlockValue = extractValue(data['deposit-block']);
+      const lockExpiryValue = extractValue(data['lock-expiry']);
+      const lockOptionValue = extractValue(data['lock-option']);
+      const withdrawnValue = extractValue(data.withdrawn);
+      const isLockedValue = extractValue(isLockedData);
+      const remainingBlocksValue = extractValue(remainingBlocksData);
+      const nameValue = extractValue(data.name);
+
+      console.log(`📦 Extracted raw values for #${depositId}:`, {
+        amountValue,
+        depositBlockValue,
+        lockExpiryValue,
+        lockOptionValue,
+        withdrawnValue,
+        isLockedValue,
+        remainingBlocksValue,
+        nameValue
+      });
+      
+      // Validate that we got the amount - this is critical (unless deposit is withdrawn)
+      const isWithdrawn = Boolean(withdrawnValue);
+      if ((amountValue === null || amountValue === undefined) && !isWithdrawn) {
+        console.error(`❌ CRITICAL: Amount is null/undefined for deposit #${depositId} and it's not marked as withdrawn`);
+        console.error(`   Raw data structure:`, JSON.stringify(data, null, 2));
+        return null;
+      }
+      
+      // Convert values with detailed logging
+      const amountInMicroStx = Number(amountValue) || 0;
+      const amountInStx = microStxToStx(amountInMicroStx);
+      
+      console.log(`💰 Amount conversion for #${depositId}:`, {
+        raw: amountValue,
+        asMicroStx: amountInMicroStx,
+        asStx: amountInStx,
+        isWithdrawn
+      });
+
       const depositInfo = {
         depositId,
-        amount: microStxToStx(Number(extractValue(data.amount))),
-        depositBlock: Number(extractValue(data['deposit-block'])),
-        lockExpiry: Number(extractValue(data['lock-expiry'])),
-        lockOption: Number(extractValue(data['lock-option'])),
-        withdrawn: Boolean(extractValue(data.withdrawn)),
-        isLocked: Boolean(extractValue(isLockedData)),
-        remainingBlocks: Number(extractValue(remainingBlocksData)),
-        name: extractValue(data.name) || undefined,
+        amount: amountInStx,
+        depositBlock: Number(depositBlockValue) || 0,
+        lockExpiry: Number(lockExpiryValue) || 0,
+        lockOption: Number(lockOptionValue) || 0,
+        withdrawn: isWithdrawn,
+        isLocked: Boolean(isLockedValue),
+        remainingBlocks: Number(remainingBlocksValue) || 0,
+        name: nameValue && typeof nameValue === 'string' ? nameValue : undefined,
       };
       
       console.log(`✅ Deposit #${depositId} info:`, depositInfo);
+      
+      // Final validation - warn if active deposit has 0 amount
+      if (depositInfo.amount === 0 && !depositInfo.withdrawn) {
+        console.warn(`⚠️ WARNING: Deposit #${depositId} has 0 amount but is not withdrawn!`);
+        console.warn(`   This might indicate a data extraction problem.`);
+      }
+      
       return depositInfo;
     } catch (err) {
       console.error(`❌ Error fetching deposit #${depositId} info:`, err);
       return null;
     }
-  }, [user?.address]);
+  }, []); // No dependencies - uses ref
+
+  // Cache for deposits to prevent unnecessary re-fetches and flickering
+  const depositsCache = useRef<{
+    data: DepositInfo[];
+    timestamp: number;
+    userAddress: string;
+  } | null>(null);
+  
+  // Abort controller for cancelling in-flight requests
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   /**
    * Get all deposits for the current user
+   * Implements caching and request cancellation to prevent flickering
+   * Returns ALL deposits including withdrawn ones
+   * @param forceRefresh - Force bypass cache and fetch fresh data
    * @returns Promise<DepositInfo[]>
    */
-  const getAllUserDeposits = useCallback(async (): Promise<DepositInfo[]> => {
-    if (!user?.address) {
+  const getAllUserDeposits = useCallback(async (forceRefresh: boolean = false): Promise<DepositInfo[]> => {
+    const currentUserAddress = userAddressRef.current;
+    if (!currentUserAddress) {
       console.log('⚠️ getAllUserDeposits: No user connected');
       return [];
     }
 
+    // Check cache first (5 second cache to prevent rapid re-fetches)
+    const now = Date.now();
+    const cacheValid = depositsCache.current && 
+                       depositsCache.current.userAddress === currentUserAddress &&
+                       (now - depositsCache.current.timestamp) < 5000 &&
+                       !forceRefresh;
+    
+    if (cacheValid) {
+      console.log('📋 Using cached deposits data');
+      return depositsCache.current!.data;
+    }
+
+    // Cancel any in-flight request
+    if (abortControllerRef.current) {
+      console.log('🚫 Cancelling previous deposit fetch request');
+      abortControllerRef.current.abort();
+    }
+
+    // Create new abort controller for this request
+    abortControllerRef.current = new AbortController();
+    const currentAbortController = abortControllerRef.current;
+
     try {
-      console.log('📋 Getting all deposits for user:', user.address);
+      console.log('📋 ========================================');
+      console.log('📋 Getting ALL deposits for user:', currentUserAddress);
+      console.log('📋 This includes active AND withdrawn deposits');
+      console.log('📋 ========================================');
+      
       const depositIds = await getUserDepositIds();
       
-      if (!Array.isArray(depositIds) || depositIds.length === 0) {
-        console.log('📋 No deposit IDs found');
+      // Check if request was aborted
+      if (currentAbortController.signal.aborted) {
+        console.log('🚫 Request aborted during getUserDepositIds');
+        return depositsCache.current?.data || [];
+      }
+      
+      if (!Array.isArray(depositIds)) {
+        console.error('❌ getUserDepositIds did not return an array:', depositIds);
         return [];
       }
+      
+      if (depositIds.length === 0) {
+        console.log('📋 No deposit IDs found - user has no deposits');
+        const emptyResult: DepositInfo[] = [];
+        depositsCache.current = {
+          data: emptyResult,
+          timestamp: now,
+          userAddress: currentUserAddress,
+        };
+        return emptyResult;
+      }
 
-      console.log('📋 Fetching details for', depositIds.length, 'deposits');
+      console.log(`📋 Found ${depositIds.length} deposit IDs:`, depositIds);
+      console.log('📋 Fetching details for each deposit...');
 
       // Fetch detailed info for each deposit in parallel
-      const deposits = await Promise.all(
-        depositIds.map(id => getDepositInfo(id))
-      );
+      const depositPromises = depositIds.map(id => getDepositInfo(id));
+      const deposits = await Promise.all(depositPromises);
+
+      // Check if request was aborted
+      if (currentAbortController.signal.aborted) {
+        console.log('🚫 Request aborted during getDepositInfo');
+        return depositsCache.current?.data || [];
+      }
 
       // Ensure deposits is an array before filtering
       if (!Array.isArray(deposits)) {
@@ -416,19 +572,46 @@ export const useMultipleDeposits = () => {
         return [];
       }
 
-      // Filter out null results and return
+      // Filter out null results (deposits that don't exist)
       const validDeposits = deposits.filter((deposit): deposit is DepositInfo => deposit !== null);
-      console.log('📋 Returning', validDeposits.length, 'valid deposits');
-      console.log('📋 Valid deposits data:', JSON.stringify(validDeposits, null, 2));
+      
+      console.log('📋 ========================================');
+      console.log(`📋 Successfully fetched ${validDeposits.length} out of ${depositIds.length} deposits`);
+      console.log('📋 Breakdown:');
+      console.log(`   - Active: ${validDeposits.filter(d => !d.withdrawn).length}`);
+      console.log(`   - Withdrawn: ${validDeposits.filter(d => d.withdrawn).length}`);
+      console.log(`   - Locked: ${validDeposits.filter(d => d.isLocked && !d.withdrawn).length}`);
+      console.log(`   - Unlocked: ${validDeposits.filter(d => !d.isLocked && !d.withdrawn).length}`);
+      console.log('📋 ========================================');
+      
+      if (validDeposits.length < depositIds.length) {
+        const missingIds = depositIds.filter(id => !validDeposits.find(d => d.depositId === id));
+        console.warn(`⚠️ WARNING: ${missingIds.length} deposits could not be fetched:`, missingIds);
+      }
+      
+      // Update cache
+      depositsCache.current = {
+        data: validDeposits,
+        timestamp: now,
+        userAddress: currentUserAddress,
+      };
+      
       return validDeposits;
     } catch (err) {
+      // If request was aborted, return cached data
+      if (currentAbortController.signal.aborted) {
+        console.log('🚫 Request aborted, returning cached data');
+        return depositsCache.current?.data || [];
+      }
+      
       console.error('❌ Error fetching all user deposits:', err);
-      return [];
+      return depositsCache.current?.data || [];
     }
-  }, [user?.address, getUserDepositIds, getDepositInfo]);
+  }, [getUserDepositIds, getDepositInfo]); // Stable dependencies
 
   /**
    * Get total balance across all active deposits
+   * Uses cached deposit data to avoid redundant fetches
    * @returns Promise<number>
    * 
    * NOTE: We calculate this in the frontend instead of using the contract's
@@ -436,48 +619,39 @@ export const useMultipleDeposits = () => {
    * it uses tx-sender instead of the user parameter in its helper function.
    */
   const getTotalBalance = useCallback(async (): Promise<number> => {
-    if (!user?.address) {
+    const currentUserAddress = userAddressRef.current;
+    if (!currentUserAddress) {
       console.log('💰 No user connected, returning 0 balance');
       return 0;
     }
 
     try {
-      console.log('💰 Calculating total balance in frontend for user:', user.address);
+      console.log('💰 Calculating total balance in frontend for user:', currentUserAddress);
       
-      // Get deposit IDs first
-      const depositIds = await getUserDepositIds();
-      if (!Array.isArray(depositIds) || depositIds.length === 0) {
+      // Use getAllUserDeposits which has caching built-in
+      const deposits = await getAllUserDeposits();
+      
+      if (!Array.isArray(deposits) || deposits.length === 0) {
         console.log('💰 No deposits found, balance is 0');
         return 0;
       }
       
-      // Get all deposit info
-      const deposits = await Promise.all(
-        depositIds.map(id => getDepositInfo(id))
-      );
-      
-      // Filter out null results and calculate total
-      if (!Array.isArray(deposits)) {
-        console.error('❌ deposits is not an array in getTotalBalance:', deposits);
-        return 0;
-      }
-      
-      const validDeposits = deposits.filter((d): d is DepositInfo => d !== null);
-      const total = validDeposits
+      const total = deposits
         .filter(d => d && !d.withdrawn)
         .reduce((sum, d) => sum + d.amount, 0);
       
-      console.log('💰 Total balance calculated:', total, 'STX from', validDeposits.length, 'deposits');
+      console.log('💰 Total balance calculated:', total, 'STX from', deposits.length, 'deposits');
       
       return total;
     } catch (err) {
       console.error('❌ Error calculating total balance:', err);
       return 0;
     }
-  }, [user?.address, getUserDepositIds, getDepositInfo]);
+  }, [getAllUserDeposits]); // Stable dependency
 
   /**
    * Get count of active deposits
+   * Uses cached deposit data to avoid redundant fetches
    * @returns Promise<number>
    * 
    * NOTE: We calculate this in the frontend instead of using the contract's
@@ -485,34 +659,24 @@ export const useMultipleDeposits = () => {
    * it uses tx-sender instead of the user parameter in its helper function.
    */
   const getActiveDepositCount = useCallback(async (): Promise<number> => {
-    if (!user?.address) {
+    const currentUserAddress = userAddressRef.current;
+    if (!currentUserAddress) {
       console.log('🔢 No user connected, returning 0 count');
       return 0;
     }
 
     try {
-      console.log('🔢 Counting active deposits in frontend for user:', user.address);
+      console.log('🔢 Counting active deposits in frontend for user:', currentUserAddress);
       
-      // Get deposit IDs first
-      const depositIds = await getUserDepositIds();
-      if (!Array.isArray(depositIds) || depositIds.length === 0) {
+      // Use getAllUserDeposits which has caching built-in
+      const deposits = await getAllUserDeposits();
+      
+      if (!Array.isArray(deposits) || deposits.length === 0) {
         console.log('🔢 No deposits found, count is 0');
         return 0;
       }
       
-      // Get all deposit info
-      const deposits = await Promise.all(
-        depositIds.map(id => getDepositInfo(id))
-      );
-      
-      // Filter out null results and count active deposits
-      if (!Array.isArray(deposits)) {
-        console.error('❌ deposits is not an array in getActiveDepositCount:', deposits);
-        return 0;
-      }
-      
-      const validDeposits = deposits.filter((d): d is DepositInfo => d !== null);
-      const count = validDeposits.filter(d => d && !d.withdrawn).length;
+      const count = deposits.filter(d => d && !d.withdrawn).length;
       
       console.log('🔢 Active deposit count:', count);
       
@@ -521,7 +685,20 @@ export const useMultipleDeposits = () => {
       console.error('❌ Error counting active deposits:', err);
       return 0;
     }
-  }, [user?.address, getUserDepositIds, getDepositInfo]);
+  }, [getAllUserDeposits]); // Stable dependency
+
+  /**
+   * Clear the deposits cache
+   * Useful for forcing a fresh fetch after transactions
+   */
+  const clearCache = useCallback(() => {
+    console.log('🗑️ Clearing deposits cache');
+    depositsCache.current = null;
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+  }, []);
 
   return {
     // Transaction functions
@@ -534,6 +711,9 @@ export const useMultipleDeposits = () => {
     getAllUserDeposits,
     getTotalBalance,
     getActiveDepositCount,
+    
+    // Cache management
+    clearCache,
     
     // State
     isLoading,
