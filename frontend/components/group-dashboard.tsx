@@ -17,6 +17,7 @@ interface GroupWithUserData {
   duration: number;
   threshold?: number;
   memberCount: number;
+  closed: boolean;
   locked: boolean;
   startBlock?: number;
   lockExpiry?: number;
@@ -37,6 +38,7 @@ export default function GroupDashboard({ onCreateGroup, onJoinGroup }: GroupDash
     fetchAllGroupsWithUserData, 
     groupDeposit, 
     groupWithdraw, 
+    closeGroup,
     startGroupLock,
     error: hookError 
   } = useGroupVault();
@@ -160,6 +162,29 @@ export default function GroupDashboard({ onCreateGroup, onJoinGroup }: GroupDash
     }
   };
 
+  // Handle close group (creator only)
+  const handleCloseGroup = async (groupId: number) => {
+    const actionKey = `close-${groupId}`;
+    setActionLoading(prev => ({ ...prev, [actionKey]: true }));
+    setError('');
+    setSuccess('');
+
+    try {
+      const txId = await closeGroup(groupId);
+      setSuccess(`Group closed successfully! Transaction ID: ${txId}`);
+      
+      // Refresh groups data
+      const updatedGroups = await fetchAllGroupsWithUserData();
+      const userGroups = updatedGroups.filter(group => group.isMember);
+      setGroups(userGroups);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to close group';
+      setError(errorMessage);
+    } finally {
+      setActionLoading(prev => ({ ...prev, [actionKey]: false }));
+    }
+  };
+
   // Handle start group lock (creator only)
   const handleStartLock = async (groupId: number) => {
     const actionKey = `start-lock-${groupId}`;
@@ -169,14 +194,14 @@ export default function GroupDashboard({ onCreateGroup, onJoinGroup }: GroupDash
 
     try {
       const txId = await startGroupLock(groupId);
-      setSuccess(`Group lock started! Transaction ID: ${txId}`);
+      setSuccess(`Savings period started! Transaction ID: ${txId}`);
       
       // Refresh groups data
       const updatedGroups = await fetchAllGroupsWithUserData();
       const userGroups = updatedGroups.filter(group => group.isMember);
       setGroups(userGroups);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to start group lock';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to start savings period';
       setError(errorMessage);
     } finally {
       setActionLoading(prev => ({ ...prev, [actionKey]: false }));
@@ -369,7 +394,8 @@ export default function GroupDashboard({ onCreateGroup, onJoinGroup }: GroupDash
 
               {groups.map((group) => {
                 const isCreator = user && group.creator === user.address;
-                const canStartLock = isCreator && !group.locked && !group.threshold;
+                const canCloseGroup = isCreator && !group.closed && !group.threshold;
+                const canStartSavings = isCreator && group.closed && !group.locked;
                 const canDeposit = group.locked;
                 const canWithdraw = group.isUnlocked && group.userBalance > 0;
                 
@@ -392,13 +418,17 @@ export default function GroupDashboard({ onCreateGroup, onJoinGroup }: GroupDash
                             ? group.isUnlocked 
                               ? 'bg-green-100 text-green-800' 
                               : 'bg-yellow-100 text-yellow-800'
-                            : 'bg-gray-700 text-gray-200'
+                            : group.closed
+                              ? 'bg-purple-100 text-purple-800'
+                              : 'bg-gray-700 text-gray-200'
                         }`}>
                           {group.locked 
                             ? group.isUnlocked 
-                              ? 'Unlocked' 
-                              : 'Locked'
-                            : 'Waiting to Start'
+                              ? 'Completed' 
+                              : 'Active'
+                            : group.closed
+                              ? 'Closed'
+                              : 'Open'
                           }
                         </span>
                       </div>
@@ -445,25 +475,66 @@ export default function GroupDashboard({ onCreateGroup, onJoinGroup }: GroupDash
 
                     {/* Actions */}
                     <div className="space-y-4">
-                      {/* Close Group / Start Lock Button (Creator Only for Unlimited Groups) */}
-                      {canStartLock && (
-                        <div className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-300 rounded-lg p-5 shadow-md">
+                      {/* Close Group Button (Creator Only for Unlimited Groups) */}
+                      {canCloseGroup && (
+                        <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-300 rounded-lg p-5 shadow-md">
                           <div className="flex items-start">
                             <div className="flex-shrink-0">
-                              <span className="text-3xl">🔒</span>
+                              <span className="text-3xl">🚪</span>
                             </div>
                             <div className="ml-4 flex-1">
-                              <h4 className="text-base font-bold text-green-900 mb-2">⚡ Ready to Close & Activate Group?</h4>
-                              <p className="text-sm text-green-800 mb-3 leading-relaxed">
-                                <strong>As the creator</strong>, you can manually close this unlimited group and start the lock period at any time.
+                              <h4 className="text-base font-bold text-orange-900 mb-2">Step 1: Close Group to New Members</h4>
+                              <p className="text-sm text-orange-800 mb-3 leading-relaxed">
+                                <strong>As the creator</strong>, you can close this group to prevent new members from joining.
                                 <br />
                                 <strong>What happens when you close:</strong>
                               </p>
-                              <ul className="text-sm text-green-800 mb-4 space-y-1 ml-4">
+                              <ul className="text-sm text-orange-800 mb-4 space-y-1 ml-4">
                                 <li>✓ No new members can join</li>
-                                <li>✓ Lock period of <strong>{getLockDurationLabel(group.duration)}</strong> begins immediately</li>
-                                <li>✓ All members can start depositing funds</li>
+                                <li>✓ Current members remain in the group</li>
+                                <li>✓ You can then start the savings period</li>
+                              </ul>
+                              <button
+                                onClick={() => handleCloseGroup(group.groupId)}
+                                disabled={actionLoading[`close-${group.groupId}`]}
+                                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-lg text-base font-bold text-white bg-gradient-to-r from-orange-600 to-yellow-600 hover:from-orange-700 hover:to-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105"
+                              >
+                                {actionLoading[`close-${group.groupId}`] ? (
+                                  <div className="flex items-center">
+                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                                    Closing Group...
+                                  </div>
+                                ) : (
+                                  <>
+                                    <span className="mr-2">🚪</span>
+                                    Close Group to New Members
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Start Savings Button (Creator Only for Closed Groups) */}
+                      {canStartSavings && (
+                        <div className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-300 rounded-lg p-5 shadow-md">
+                          <div className="flex items-start">
+                            <div className="flex-shrink-0">
+                              <span className="text-3xl">🚀</span>
+                            </div>
+                            <div className="ml-4 flex-1">
+                              <h4 className="text-base font-bold text-green-900 mb-2">Step 2: Start Savings Period</h4>
+                              <p className="text-sm text-green-800 mb-3 leading-relaxed">
+                                <strong>Group is closed!</strong> Now you can start the savings period.
+                                <br />
+                                <strong>What happens when you start:</strong>
+                              </p>
+                              <ul className="text-sm text-green-800 mb-4 space-y-1 ml-4">
+                                <li>✓ Lock period of <strong>{getLockDurationLabel(group.duration)}</strong> begins</li>
+                                <li>✓ All members can deposit funds</li>
                                 <li>✓ Funds will be locked until the period expires</li>
+                                <li>✓ Countdown timer starts now</li>
                               </ul>
                               <button
                                 onClick={() => handleStartLock(group.groupId)}
@@ -473,12 +544,12 @@ export default function GroupDashboard({ onCreateGroup, onJoinGroup }: GroupDash
                                 {actionLoading[`start-lock-${group.groupId}`] ? (
                                   <div className="flex items-center">
                                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                                    Closing Group & Starting Lock...
+                                    Starting Savings Period...
                                   </div>
                                 ) : (
                                   <>
-                                    <span className="mr-2">🔒</span>
-                                    Close Group & Start Lock Period Now
+                                    <span className="mr-2">🚀</span>
+                                    Start Savings Period Now
                                   </>
                                 )}
                               </button>
@@ -547,17 +618,31 @@ export default function GroupDashboard({ onCreateGroup, onJoinGroup }: GroupDash
                       )}
 
                       {/* Status Messages */}
-                      {!group.locked && !canStartLock && (
+                      {!group.closed && !canCloseGroup && (
                         <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
                           <div className="flex items-start">
                             <span className="text-xl mr-2">⏳</span>
                             <div>
-                              <p className="text-sm font-medium text-blue-800 mb-1">Waiting to Start</p>
+                              <p className="text-sm font-medium text-blue-800 mb-1">Open for Members</p>
                               <p className="text-sm text-blue-700">
                                 {group.threshold 
-                                  ? `This group will automatically close and start the lock period when it reaches ${group.threshold} members. Currently at ${group.memberCount}/${group.threshold} members.`
-                                  : 'This unlimited group is waiting for the creator to manually close it and start the lock period.'
+                                  ? `This group will automatically close when it reaches ${group.threshold} members. Currently at ${group.memberCount}/${group.threshold} members.`
+                                  : 'This unlimited group is waiting for the creator to manually close it.'
                                 }
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {group.closed && !group.locked && !canStartSavings && (
+                        <div className="bg-purple-50 border border-purple-200 rounded-md p-3">
+                          <div className="flex items-start">
+                            <span className="text-xl mr-2">🚪</span>
+                            <div>
+                              <p className="text-sm font-medium text-purple-800 mb-1">Group Closed</p>
+                              <p className="text-sm text-purple-700">
+                                This group is closed to new members. Waiting for the creator to start the savings period.
                               </p>
                             </div>
                           </div>

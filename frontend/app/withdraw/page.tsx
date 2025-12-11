@@ -460,12 +460,12 @@ export default function WithdrawPage() {
           {!isLoading && deposits.length === 0 && (
             <div className="p-8 bg-gray-800 border border-gray-700 rounded-lg shadow-sm text-center">
               <h3 className="text-xl font-semibold text-white mb-2">No Deposits Found</h3>
-              <p className="text-gray-400 mb-6">You don&apos;t have any deposits yet. Create your first deposit to get started!</p>
+              <p className="text-gray-400 mb-6">You don&apos;t have any deposits yet. Make a deposit to get started!</p>
               <a
                 href="/deposit"
                 className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
               >
-                Create Your First Deposit
+                Make a Deposit
               </a>
             </div>
           )}

@@ -216,7 +216,57 @@ export const useGroupVault = () => {
   }, [isConnected, user]);
 
   /**
-   * Start the lock for a group (creator only)
+   * Close a group to prevent new members (creator only)
+   * @param groupId - ID of the group to close
+   * @returns Promise<string> - Transaction ID
+   */
+  const closeGroup = useCallback(async (groupId: number): Promise<string> => {
+    if (!isConnected || !user) {
+      throw new Error('Wallet not connected');
+    }
+
+    // Validate contract configuration
+    if (!isContractConfigValid()) {
+      const configError = getContractConfigError();
+      throw new Error(configError || 'Contract configuration is invalid');
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const network = getStacksNetwork();
+      
+      // Prepare function arguments
+      const functionArgs = [uintCV(groupId)];
+
+      // Use Stacks Connect to open contract call
+      return new Promise((resolve, reject) => {
+        openContractCall({
+          network,
+          contractAddress: CONTRACT_CONFIG.address,
+          contractName: CONTRACT_CONFIG.name,
+          functionName: 'close-group',
+          functionArgs,
+          onFinish: (data) => {
+            resolve(data.txId);
+          },
+          onCancel: () => {
+            reject(new Error('Transaction cancelled by user'));
+          },
+        });
+      });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to close group';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isConnected, user]);
+
+  /**
+   * Start the lock period for a group (creator only)
    * @param groupId - ID of the group to start
    * @returns Promise<string> - Transaction ID
    */
@@ -468,6 +518,7 @@ export const useGroupVault = () => {
     createGroup,
     joinGroup,
     joinGroupWithDeposit,
+    closeGroup,
     startGroupLock,
     groupDeposit,
     groupWithdraw,

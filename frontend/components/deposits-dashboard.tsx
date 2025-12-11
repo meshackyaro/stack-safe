@@ -363,7 +363,7 @@ export default function DepositsDashboard({ onCreateDeposit, refreshTrigger }: D
                 </svg>
               </div>
               <h3 className="text-lg font-medium text-white mb-2">No Deposits Yet</h3>
-              <p className="text-gray-500 mb-6">Create your first named deposit to start saving with time-locked security and organized goal tracking!</p>
+              <p className="text-gray-500 mb-6">Make a deposit to start saving with time-locked security and organized goal tracking!</p>
               
               {onCreateDeposit && (
                 <button
@@ -371,7 +371,7 @@ export default function DepositsDashboard({ onCreateDeposit, refreshTrigger }: D
                   className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
                 >
                   <span className="mr-2">💎</span>
-                  Create Your First Deposit
+                  Make a Deposit
                 </button>
               )}
             </div>

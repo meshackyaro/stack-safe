@@ -403,7 +403,7 @@ export default function VaultInfo({ refreshTrigger, onRefresh }: VaultInfoProps 
               No deposits found
               {isLoading && <span className="ml-2 text-sm text-gray-500">↻</span>}
             </p>
-            <p className="text-gray-500 text-sm mt-1">Make your first deposit to get started!</p>
+            <p className="text-gray-500 text-sm mt-1">Make a deposit to get started!</p>
           </div>
         )}
       </div>

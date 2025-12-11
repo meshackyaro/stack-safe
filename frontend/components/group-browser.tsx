@@ -18,6 +18,7 @@ interface GroupWithUserData {
   duration: number;
   threshold?: number;
   memberCount: number;
+  closed: boolean;
   locked: boolean;
   startBlock?: number;
   lockExpiry?: number;
@@ -102,7 +103,7 @@ export default function GroupBrowser({ onGroupJoined }: GroupBrowserProps) {
     switch (statusFilter) {
       case 'open':
         filtered = filtered.filter(group => 
-          !group.locked && (!group.threshold || group.memberCount < group.threshold)
+          !group.closed && (!group.threshold || group.memberCount < group.threshold)
         );
         break;
       case 'locked':
@@ -191,10 +192,13 @@ export default function GroupBrowser({ onGroupJoined }: GroupBrowserProps) {
       return { status: 'Completed', color: 'green', description: 'Lock period ended - withdrawals available' };
     }
     if (group.locked) {
-      return { status: 'Active', color: 'yellow', description: 'Lock period active - deposits accepted' };
+      return { status: 'Active', color: 'yellow', description: 'Savings period active - deposits accepted' };
+    }
+    if (group.closed) {
+      return { status: 'Closed', color: 'purple', description: 'Closed to new members - waiting to start' };
     }
     if (group.threshold && group.memberCount >= group.threshold) {
-      return { status: 'Full', color: 'red', description: 'Will start automatically when full' };
+      return { status: 'Full', color: 'red', description: 'Will close automatically when full' };
     }
     return { status: 'Open', color: 'blue', description: 'Accepting new members' };
   };
@@ -276,7 +280,7 @@ export default function GroupBrowser({ onGroupJoined }: GroupBrowserProps) {
             Showing {filteredAndSortedGroups.length} of {allGroups.length} groups
           </span>
           <span>
-            {allGroups.filter(g => !g.locked && (!g.threshold || g.memberCount < g.threshold)).length} open for joining
+            {allGroups.filter(g => !g.closed && (!g.threshold || g.memberCount < g.threshold)).length} open for joining
           </span>
         </div>
       </div>
@@ -339,7 +343,7 @@ export default function GroupBrowser({ onGroupJoined }: GroupBrowserProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredAndSortedGroups.map((group) => {
                 const statusInfo = getGroupStatus(group);
-                const canJoin = !group.isMember && !group.locked && (!group.threshold || group.memberCount < group.threshold);
+                const canJoin = !group.isMember && !group.closed && (!group.threshold || group.memberCount < group.threshold);
                 const isCreator = user && group.creator === user.address;
                 
                 return (
@@ -467,8 +471,8 @@ export default function GroupBrowser({ onGroupJoined }: GroupBrowserProps) {
                       {!canJoin && !group.isMember && (
                         <div className="bg-gray-800 border border-gray-200 rounded-md p-3">
                           <p className="text-sm text-gray-400">
-                            {group.locked 
-                              ? 'This group is no longer accepting new members'
+                            {group.closed 
+                              ? 'This group is closed to new members'
                               : 'This group is full'
                             }
                           </p>

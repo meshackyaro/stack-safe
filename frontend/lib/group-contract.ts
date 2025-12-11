@@ -13,6 +13,7 @@ export interface GroupInfo {
   duration: number;
   threshold?: number;
   memberCount: number;
+  closed: boolean;
   locked: boolean;
   startBlock?: number;
   lockExpiry?: number;
@@ -57,6 +58,7 @@ export const getGroupInfo = async (groupId: number): Promise<GroupInfo | null> =
         duration: Number(data.duration?.value || 0),
         threshold: data.threshold?.value ? Number(data.threshold.value) : undefined,
         memberCount: Number(data['member-count']?.value || 0),
+        closed: Boolean(data.closed?.value),
         locked: Boolean(data.locked?.value),
         startBlock: data['start-block']?.value ? Number(data['start-block'].value) : undefined,
         lockExpiry: data['lock-expiry']?.value ? Number(data['lock-expiry'].value) : undefined,
@@ -334,9 +336,9 @@ export const getOpenGroups = async (): Promise<GroupInfo[]> => {
   try {
     const allGroups = await getAllGroups();
     
-    // Filter for groups that are not locked and not full
+    // Filter for groups that are not closed and not full
     return allGroups.filter(group => {
-      if (group.locked) return false;
+      if (group.closed) return false;
       if (group.threshold && group.memberCount >= group.threshold) return false;
       return true;
     });

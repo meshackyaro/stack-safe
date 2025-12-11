@@ -109,6 +109,7 @@
         duration: uint,
         threshold: (optional uint),
         member-count: uint,
+        closed: bool,
         locked: bool,
         start-block: (optional uint),
         lock-expiry: (optional uint),
@@ -656,6 +657,7 @@
             duration: lock-blocks,
             threshold: threshold,
             member-count: u1,
+            closed: false,
             locked: false,
             start-block: none,
             lock-expiry: none,
@@ -694,8 +696,8 @@
                 (map-get? group-member-list { group-id: group-id })
             ))
         )
-        ;; Check if group exists and is not locked
-        (asserts! (not (get locked group-data)) (err ERR-GROUP-LOCKED))
+        ;; Check if group exists and is not closed
+        (asserts! (not (get closed group-data)) (err ERR-GROUP-LOCKED))
 
         ;; Check if user is already a member
         (asserts!
@@ -738,19 +740,17 @@
                 (merge group-data { member-count: new-member-count })
             )
 
-            ;; Auto-lock if threshold reached
+            ;; Auto-close if threshold reached (but don't start lock yet)
             (match (get threshold group-data)
                 some-threshold (if (>= new-member-count some-threshold)
                     (begin
                         (map-set savings-groups { group-id: group-id }
                             (merge group-data {
                                 member-count: new-member-count,
-                                locked: true,
-                                start-block: (some stacks-block-height),
-                                lock-expiry: (some (+ stacks-block-height (get duration group-data))),
+                                closed: true,
                             })
                         )
-                        (ok "joined-and-locked")
+                        (ok "joined-and-closed")
                     )
                     (ok "joined")
                 )
@@ -779,8 +779,8 @@
         ;; Validate deposit amount
         (asserts! (> amount u0) (err ERR-INVALID-AMOUNT))
 
-        ;; Check if group exists and is not locked
-        (asserts! (not (get locked group-data)) (err ERR-GROUP-LOCKED))
+        ;; Check if group exists and is not closed
+        (asserts! (not (get closed group-data)) (err ERR-GROUP-LOCKED))
 
         ;; Check if user is already a member
         (asserts!
@@ -826,19 +826,17 @@
                 (merge group-data { member-count: new-member-count })
             )
 
-            ;; Auto-lock if threshold reached
+            ;; Auto-close if threshold reached (but don't start lock yet)
             (match (get threshold group-data)
                 some-threshold (if (>= new-member-count some-threshold)
                     (begin
                         (map-set savings-groups { group-id: group-id }
                             (merge group-data {
                                 member-count: new-member-count,
-                                locked: true,
-                                start-block: (some stacks-block-height),
-                                lock-expiry: (some (+ stacks-block-height (get duration group-data))),
+                                closed: true,
                             })
                         )
-                        (ok "joined-and-locked")
+                        (ok "joined-and-closed")
                     )
                     (ok "joined")
                 )
@@ -848,9 +846,34 @@
     )
 )
 
-;; Manually start the lock for a group (creator only)
-;; @param group-id: ID of the group to start/close
-;; This allows the creator to close the group at any time, even before threshold is reached
+;; Close a group to prevent new members (creator only)
+;; @param group-id: ID of the group to close
+;; This prevents new members from joining but doesn't start the lock period yet
+(define-public (close-group (group-id uint))
+    (let (
+            (closer tx-sender)
+            (group-data (unwrap! (map-get? savings-groups { group-id: group-id })
+                (err ERR-GROUP-NOT-FOUND)
+            ))
+        )
+        ;; Only creator can close the group
+        (asserts! (is-eq closer (get creator group-data)) (err ERR-NOT-CREATOR))
+
+        ;; Group must not be closed already
+        (asserts! (not (get closed group-data)) (err ERR-GROUP-LOCKED))
+
+        ;; Close the group (prevent new members)
+        (map-set savings-groups { group-id: group-id }
+            (merge group-data { closed: true })
+        )
+
+        (ok true)
+    )
+)
+
+;; Start the savings period for a group (creator only)
+;; @param group-id: ID of the group to start
+;; This starts the lock period countdown - group must be closed first
 (define-public (start-group-lock (group-id uint))
     (let (
             (starter tx-sender)
@@ -861,10 +884,13 @@
         ;; Only creator can start the lock
         (asserts! (is-eq starter (get creator group-data)) (err ERR-NOT-CREATOR))
 
+        ;; Group must be closed before starting
+        (asserts! (get closed group-data) (err ERR-GROUP-NOT-STARTED))
+
         ;; Group must not be locked already
         (asserts! (not (get locked group-data)) (err ERR-GROUP-LOCKED))
 
-        ;; Start the lock (works for both threshold and non-threshold groups)
+        ;; Start the lock period
         (map-set savings-groups { group-id: group-id }
             (merge group-data {
                 locked: true,
