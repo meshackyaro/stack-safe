@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "StackSafe - Stacks Savings dApp",
+  title: "GrowFundz - Stacks Savings dApp",
   description: "A decentralized savings vault built on Stacks blockchain with time-locked deposits",
 };
 

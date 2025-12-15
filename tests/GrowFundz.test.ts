@@ -6,7 +6,7 @@ const deployer = accounts.get("deployer")!;
 const wallet1 = accounts.get("wallet_1")!;
 const wallet2 = accounts.get("wallet_2")!;
 
-describe("StackSafe Contract", () => {
+describe("GrowFundz Contract", () => {
   beforeEach(() => {
     // Reset simnet state before each test
     simnet.setEpoch("3.0");
@@ -18,7 +18,7 @@ describe("StackSafe Contract", () => {
       const lockOption = 5; // 1 day lock
       
       const depositResult = simnet.callPublicFn(
-        "StackSafe",
+        "GrowFundz",
         "deposit",
         [Cl.uint(depositAmount), Cl.uint(lockOption)],
         deployer
@@ -28,7 +28,7 @@ describe("StackSafe Contract", () => {
 
       // Verify balance is updated
       const balance = simnet.callReadOnlyFn(
-        "StackSafe",
+        "GrowFundz",
         "get-balance",
         [Cl.principal(deployer)],
         deployer
@@ -37,7 +37,7 @@ describe("StackSafe Contract", () => {
 
       // Verify deposit info is stored correctly
       const depositInfo = simnet.callReadOnlyFn(
-        "StackSafe",
+        "GrowFundz",
         "get-deposit",
         [Cl.principal(deployer)],
         deployer
@@ -52,7 +52,7 @@ describe("StackSafe Contract", () => {
 
     it("should reject deposits with zero amount", () => {
       const depositResult = simnet.callPublicFn(
-        "StackSafe",
+        "GrowFundz",
         "deposit",
         [Cl.uint(0), Cl.uint(5)],
         deployer
@@ -63,7 +63,7 @@ describe("StackSafe Contract", () => {
 
     it("should reject deposits with invalid lock option", () => {
       const depositResult = simnet.callPublicFn(
-        "StackSafe",
+        "GrowFundz",
         "deposit",
         [Cl.uint(1000000), Cl.uint(99)], // Invalid lock option
         deployer
@@ -75,7 +75,7 @@ describe("StackSafe Contract", () => {
     it("should handle multiple deposits from same user (overwrites previous)", () => {
       // First deposit
       simnet.callPublicFn(
-        "StackSafe",
+        "GrowFundz",
         "deposit",
         [Cl.uint(50_000_000), Cl.uint(1)], // 1 hour lock
         deployer
@@ -83,7 +83,7 @@ describe("StackSafe Contract", () => {
 
       // Second deposit (should overwrite)
       const secondDeposit = simnet.callPublicFn(
-        "StackSafe",
+        "GrowFundz",
         "deposit",
         [Cl.uint(100_000_000), Cl.uint(5)], // 1 day lock
         deployer
@@ -92,7 +92,7 @@ describe("StackSafe Contract", () => {
       expect(secondDeposit.result).toBeOk(Cl.uint(100_000_000));
 
       const balance = simnet.callReadOnlyFn(
-        "StackSafe",
+        "GrowFundz",
         "get-balance",
         [Cl.principal(deployer)],
         deployer
@@ -106,7 +106,7 @@ describe("StackSafe Contract", () => {
 
       // User 1 deposits
       simnet.callPublicFn(
-        "StackSafe",
+        "GrowFundz",
         "deposit",
         [Cl.uint(amount1), Cl.uint(5)],
         wallet1
@@ -114,7 +114,7 @@ describe("StackSafe Contract", () => {
 
       // User 2 deposits
       simnet.callPublicFn(
-        "StackSafe",
+        "GrowFundz",
         "deposit",
         [Cl.uint(amount2), Cl.uint(7)],
         wallet2
@@ -122,13 +122,13 @@ describe("StackSafe Contract", () => {
 
       // Check both balances
       const balance1 = simnet.callReadOnlyFn(
-        "StackSafe",
+        "GrowFundz",
         "get-balance",
         [Cl.principal(wallet1)],
         wallet1
       );
       const balance2 = simnet.callReadOnlyFn(
-        "StackSafe",
+        "GrowFundz",
         "get-balance",
         [Cl.principal(wallet2)],
         wallet2
@@ -159,7 +159,7 @@ describe("StackSafe Contract", () => {
 
       lockOptions.forEach(({ option, expectedBlocks }) => {
         const duration = simnet.callReadOnlyFn(
-          "StackSafe",
+          "GrowFundz",
           "get-lock-duration",
           [Cl.uint(option)],
           deployer
@@ -173,7 +173,7 @@ describe("StackSafe Contract", () => {
       
       invalidOptions.forEach(option => {
         const duration = simnet.callReadOnlyFn(
-          "StackSafe",
+          "GrowFundz",
           "get-lock-duration",
           [Cl.uint(option)],
           deployer
@@ -187,7 +187,7 @@ describe("StackSafe Contract", () => {
     beforeEach(() => {
       // Setup: deposit 100 STX with 1-hour lock for most tests
       simnet.callPublicFn(
-        "StackSafe",
+        "GrowFundz",
         "deposit",
         [Cl.uint(100_000_000), Cl.uint(1)], // 1 hour = 6 blocks
         deployer
@@ -196,7 +196,7 @@ describe("StackSafe Contract", () => {
 
     it("should prevent withdrawal before lock period expires", () => {
       const withdrawResult = simnet.callPublicFn(
-        "StackSafe",
+        "GrowFundz",
         "withdraw",
         [Cl.uint(50_000_000)],
         deployer
@@ -212,7 +212,7 @@ describe("StackSafe Contract", () => {
       simnet.mineEmptyBlocks(7); // More than 6 blocks needed
 
       const withdrawResult = simnet.callPublicFn(
-        "StackSafe",
+        "GrowFundz",
         "withdraw",
         [Cl.uint(withdrawAmount)],
         deployer
@@ -222,7 +222,7 @@ describe("StackSafe Contract", () => {
 
       // Check remaining balance
       const balance = simnet.callReadOnlyFn(
-        "StackSafe",
+        "GrowFundz",
         "get-balance",
         [Cl.principal(deployer)],
         deployer
@@ -237,7 +237,7 @@ describe("StackSafe Contract", () => {
       simnet.mineEmptyBlocks(7);
 
       const withdrawResult = simnet.callPublicFn(
-        "StackSafe",
+        "GrowFundz",
         "withdraw",
         [Cl.uint(fullAmount)],
         deployer
@@ -247,7 +247,7 @@ describe("StackSafe Contract", () => {
 
       // Check balance is now zero
       const balance = simnet.callReadOnlyFn(
-        "StackSafe",
+        "GrowFundz",
         "get-balance",
         [Cl.principal(deployer)],
         deployer
@@ -256,7 +256,7 @@ describe("StackSafe Contract", () => {
 
       // Verify deposit record is deleted
       const depositInfo = simnet.callReadOnlyFn(
-        "StackSafe",
+        "GrowFundz",
         "get-deposit",
         [Cl.principal(deployer)],
         deployer
@@ -273,7 +273,7 @@ describe("StackSafe Contract", () => {
       simnet.mineEmptyBlocks(7);
 
       const withdrawResult = simnet.callPublicFn(
-        "StackSafe",
+        "GrowFundz",
         "withdraw",
         [Cl.uint(200_000_000)], // More than deposited
         deployer
@@ -284,7 +284,7 @@ describe("StackSafe Contract", () => {
 
     it("should prevent withdrawal from users with no deposits", () => {
       const withdrawResult = simnet.callPublicFn(
-        "StackSafe",
+        "GrowFundz",
         "withdraw",
         [Cl.uint(10_000_000)],
         wallet1 // User who hasn't deposited
@@ -298,7 +298,7 @@ describe("StackSafe Contract", () => {
     beforeEach(() => {
       // Setup: deposit with 1-day lock
       simnet.callPublicFn(
-        "StackSafe",
+        "GrowFundz",
         "deposit",
         [Cl.uint(100_000_000), Cl.uint(5)], // 1 day = 144 blocks
         deployer
@@ -308,7 +308,7 @@ describe("StackSafe Contract", () => {
     it("should correctly report lock status", () => {
       // Should be locked initially
       const isLocked = simnet.callReadOnlyFn(
-        "StackSafe",
+        "GrowFundz",
         "is-locked",
         [Cl.principal(deployer)],
         deployer
@@ -319,7 +319,7 @@ describe("StackSafe Contract", () => {
       simnet.mineEmptyBlocks(145);
 
       const isLockedAfter = simnet.callReadOnlyFn(
-        "StackSafe",
+        "GrowFundz",
         "is-locked",
         [Cl.principal(deployer)],
         deployer
@@ -329,7 +329,7 @@ describe("StackSafe Contract", () => {
 
     it("should correctly calculate remaining lock blocks", () => {
       const remainingBlocks = simnet.callReadOnlyFn(
-        "StackSafe",
+        "GrowFundz",
         "get-remaining-lock-blocks",
         [Cl.principal(deployer)],
         deployer
@@ -340,7 +340,7 @@ describe("StackSafe Contract", () => {
       simnet.mineEmptyBlocks(50);
 
       const remainingAfter = simnet.callReadOnlyFn(
-        "StackSafe",
+        "GrowFundz",
         "get-remaining-lock-blocks",
         [Cl.principal(deployer)],
         deployer
@@ -351,7 +351,7 @@ describe("StackSafe Contract", () => {
       simnet.mineEmptyBlocks(100);
 
       const remainingExpired = simnet.callReadOnlyFn(
-        "StackSafe",
+        "GrowFundz",
         "get-remaining-lock-blocks",
         [Cl.principal(deployer)],
         deployer
@@ -362,7 +362,7 @@ describe("StackSafe Contract", () => {
     it("should return correct lock expiry block height", () => {
       const currentBlock = simnet.blockHeight;
       const lockExpiry = simnet.callReadOnlyFn(
-        "StackSafe",
+        "GrowFundz",
         "get-lock-expiry",
         [Cl.principal(deployer)],
         deployer
@@ -372,7 +372,7 @@ describe("StackSafe Contract", () => {
 
     it("should handle queries for users with no deposits", () => {
       const balance = simnet.callReadOnlyFn(
-        "StackSafe",
+        "GrowFundz",
         "get-balance",
         [Cl.principal(wallet1)],
         wallet1
@@ -380,7 +380,7 @@ describe("StackSafe Contract", () => {
       expect(balance.result).toBeUint(0);
 
       const isLocked = simnet.callReadOnlyFn(
-        "StackSafe",
+        "GrowFundz",
         "is-locked",
         [Cl.principal(wallet1)],
         wallet1
@@ -388,7 +388,7 @@ describe("StackSafe Contract", () => {
       expect(isLocked.result).toBeBool(false);
 
       const remainingBlocks = simnet.callReadOnlyFn(
-        "StackSafe",
+        "GrowFundz",
         "get-remaining-lock-blocks",
         [Cl.principal(wallet1)],
         wallet1
@@ -401,7 +401,7 @@ describe("StackSafe Contract", () => {
     it("should handle multiple deposits and withdrawals correctly", () => {
       // First deposit with short lock
       simnet.callPublicFn(
-        "StackSafe",
+        "GrowFundz",
         "deposit",
         [Cl.uint(50_000_000), Cl.uint(1)], // 1 hour
         deployer
@@ -412,7 +412,7 @@ describe("StackSafe Contract", () => {
 
       // Partial withdrawal
       simnet.callPublicFn(
-        "StackSafe",
+        "GrowFundz",
         "withdraw",
         [Cl.uint(20_000_000)],
         deployer
@@ -420,14 +420,14 @@ describe("StackSafe Contract", () => {
 
       // Second deposit (should overwrite remaining balance)
       simnet.callPublicFn(
-        "StackSafe",
+        "GrowFundz",
         "deposit",
         [Cl.uint(100_000_000), Cl.uint(2)], // 3 hours
         deployer
       );
 
       const finalBalance = simnet.callReadOnlyFn(
-        "StackSafe",
+        "GrowFundz",
         "get-balance",
         [Cl.principal(deployer)],
         deployer
@@ -438,7 +438,7 @@ describe("StackSafe Contract", () => {
     it("should handle zero withdrawal amount", () => {
       // Setup deposit and wait for unlock
       simnet.callPublicFn(
-        "StackSafe",
+        "GrowFundz",
         "deposit",
         [Cl.uint(100_000_000), Cl.uint(1)],
         deployer
@@ -446,7 +446,7 @@ describe("StackSafe Contract", () => {
       simnet.mineEmptyBlocks(7);
 
       const withdrawResult = simnet.callPublicFn(
-        "StackSafe",
+        "GrowFundz",
         "withdraw",
         [Cl.uint(0)],
         deployer
@@ -457,7 +457,7 @@ describe("StackSafe Contract", () => {
 
       // Balance should remain unchanged
       const balance = simnet.callReadOnlyFn(
-        "StackSafe",
+        "GrowFundz",
         "get-balance",
         [Cl.principal(deployer)],
         deployer
@@ -474,7 +474,7 @@ describe("StackSafe Contract", () => {
       
       // Make deposit
       const depositResult = simnet.callPublicFn(
-        "StackSafe",
+        "GrowFundz",
         "deposit",
         [Cl.uint(depositAmount), Cl.uint(lockOption)],
         deployer
@@ -486,7 +486,7 @@ describe("StackSafe Contract", () => {
       
       // Get deposit info
       const depositInfo = simnet.callReadOnlyFn(
-        "StackSafe",
+        "GrowFundz",
         "get-deposit",
         [Cl.principal(deployer)],
         deployer
@@ -496,7 +496,7 @@ describe("StackSafe Contract", () => {
       
       // Check lock duration calculation
       const lockDuration = simnet.callReadOnlyFn(
-        "StackSafe",
+        "GrowFundz",
         "get-lock-duration",
         [Cl.uint(lockOption)],
         deployer
@@ -505,7 +505,7 @@ describe("StackSafe Contract", () => {
       
       // Check is-locked status
       const isLocked = simnet.callReadOnlyFn(
-        "StackSafe",
+        "GrowFundz",
         "is-locked",
         [Cl.principal(deployer)],
         deployer
@@ -517,7 +517,7 @@ describe("StackSafe Contract", () => {
       console.log(`\nAfter mining 1 block, current block: ${simnet.blockHeight}`);
       
       const isLockedAfter1 = simnet.callReadOnlyFn(
-        "StackSafe",
+        "GrowFundz",
         "is-locked",
         [Cl.principal(deployer)],
         deployer
@@ -525,7 +525,7 @@ describe("StackSafe Contract", () => {
       console.log(`Is locked after 1 block:`, isLockedAfter1.result);
       
       const remainingBlocks1 = simnet.callReadOnlyFn(
-        "StackSafe",
+        "GrowFundz",
         "get-remaining-lock-blocks",
         [Cl.principal(deployer)],
         deployer
@@ -534,7 +534,7 @@ describe("StackSafe Contract", () => {
       
       // Try withdrawal
       const withdrawResult1 = simnet.callPublicFn(
-        "StackSafe",
+        "GrowFundz",
         "withdraw",
         [Cl.uint(50_000_000)],
         deployer
@@ -547,14 +547,14 @@ describe("StackSafe Contract", () => {
         const currentBlock = simnet.blockHeight;
         
         const isLockedNow = simnet.callReadOnlyFn(
-          "StackSafe",
+          "GrowFundz",
           "is-locked",
           [Cl.principal(deployer)],
           deployer
         );
         
         const remainingNow = simnet.callReadOnlyFn(
-          "StackSafe",
+          "GrowFundz",
           "get-remaining-lock-blocks",
           [Cl.principal(deployer)],
           deployer
@@ -591,7 +591,7 @@ describe("StackSafe Contract", () => {
         
         // Make deposit
         const depositResult = simnet.callPublicFn(
-          "StackSafe",
+          "GrowFundz",
           "deposit",
           [Cl.uint(depositAmount), Cl.uint(option)],
           testWallet
@@ -605,7 +605,7 @@ describe("StackSafe Contract", () => {
         
         // Verify lock duration calculation
         const lockDuration = simnet.callReadOnlyFn(
-          "StackSafe",
+          "GrowFundz",
           "get-lock-duration",
           [Cl.uint(option)],
           testWallet
@@ -614,7 +614,7 @@ describe("StackSafe Contract", () => {
         
         // Verify deposit info
         const depositInfo = simnet.callReadOnlyFn(
-          "StackSafe",
+          "GrowFundz",
           "get-deposit",
           [Cl.principal(testWallet)],
           testWallet
@@ -633,7 +633,7 @@ describe("StackSafe Contract", () => {
           console.log(`Testing at block ${currentBlock} (should still be locked, expiry at ${expectedExpiry})`);
           
           const lockedResult = simnet.callPublicFn(
-            "StackSafe",
+            "GrowFundz",
             "withdraw",
             [Cl.uint(depositAmount)],
             testWallet
@@ -656,7 +656,7 @@ describe("StackSafe Contract", () => {
         console.log(`Testing at block ${finalBlock} (should be unlocked when mined, expiry at ${expectedExpiry})`);
         
         const unlockedResult = simnet.callPublicFn(
-          "StackSafe",
+          "GrowFundz",
           "withdraw",
           [Cl.uint(depositAmount)],
           testWallet

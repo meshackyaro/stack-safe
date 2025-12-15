@@ -6,7 +6,7 @@ This document summarizes the fixes and improvements made to the group savings fe
 
 ## Changes Made
 
-### 1. Smart Contract Updates (`contracts/StackSafe.clar`)
+### 1. Smart Contract Updates (`contracts/GrowFundz.clar`)
 
 #### Added `closed` Field to Group Data Structure
 
@@ -221,7 +221,7 @@ const canStartSavings = isCreator && group.closed && !group.locked;
 
 ## Files Modified
 
-1. `contracts/StackSafe.clar` - Smart contract with new lifecycle
+1. `contracts/GrowFundz.clar` - Smart contract with new lifecycle
 2. `frontend/lib/group-contract.ts` - Updated types and queries
 3. `frontend/hooks/use-group-vault.ts` - Added closeGroup function
 4. `frontend/components/group-dashboard.tsx` - Two-step creator workflow

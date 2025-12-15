@@ -1,6 +1,6 @@
 /**
  * Deposit Form Component
- * Handles STX deposits to StackSafe with time-based lock duration selection and $2 USD minimum enforcement
+ * Handles STX deposits to GrowFundz with time-based lock duration selection and $2 USD minimum enforcement
  * Updated to support the new contract's time-based lock periods and dynamic minimum deposit validation
  */
 

@@ -1,6 +1,6 @@
 /**
  * Stacks Network Configuration
- * Centralizes network settings and contract information for the StackSafe dApp
+ * Centralizes network settings and contract information for the GrowFundz dApp
  */
 
 import { 
@@ -52,7 +52,7 @@ export const getStacksNetwork = () => {
 // Contract configuration - loaded from environment variables
 export const CONTRACT_CONFIG = {
   address: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '',
-  name: process.env.NEXT_PUBLIC_CONTRACT_NAME || 'StackSafe',
+  name: process.env.NEXT_PUBLIC_CONTRACT_NAME || 'GrowFundz',
 } as const;
 
 /**
@@ -96,7 +96,7 @@ export const getContractConfigError = (): string | null => {
   }
   
   if (CONTRACT_CONFIG.address === 'DEPLOY_CONTRACT_FIRST') {
-    return 'Contract not deployed yet. Please deploy the StackSafe contract to testnet using "clarinet deployments apply --testnet", then update NEXT_PUBLIC_CONTRACT_ADDRESS in .env.local with the deployed address';
+    return 'Contract not deployed yet. Please deploy the GrowFundz contract to testnet using "clarinet deployments apply --testnet", then update NEXT_PUBLIC_CONTRACT_ADDRESS in .env.local with the deployed address';
   }
   
   if (!CONTRACT_CONFIG.address.startsWith('ST') && !CONTRACT_CONFIG.address.startsWith('SP')) {

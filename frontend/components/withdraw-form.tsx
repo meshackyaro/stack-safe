@@ -1,6 +1,6 @@
 /**
  * Withdraw Form Component
- * Handles STX withdrawals from StackSafe with time-based lock validation
+ * Handles STX withdrawals from GrowFundz with time-based lock validation
  * Updated to support the new contract's time-based lock periods
  */
 
@@ -41,7 +41,7 @@ export default function WithdrawForm({ onWithdrawSuccess }: WithdrawFormProps) {
           const address = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
           
           if (!address || address === 'DEPLOY_CONTRACT_FIRST') {
-            setError('Contract not deployed yet. Please deploy the StackSafe contract to testnet first.');
+            setError('Contract not deployed yet. Please deploy the GrowFundz contract to testnet first.');
           } else {
             setError('Contract configuration is invalid. Please check your environment variables.');
           }

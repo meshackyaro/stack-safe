@@ -1,4 +1,4 @@
-# StackSafe - Decentralized Savings Vault
+# GrowFundz - Decentralized Savings Vault
 
 A decentralized savings application built on Stacks blockchain with time-locked deposits and group savings functionality.
 
@@ -245,7 +245,7 @@ npm run dev
 ```
 piggy-vault/
 ├── contracts/
-│   └── StackSafe.clar          # Main smart contract
+│   └── GrowFundz.clar          # Main smart contract
 ├── frontend/
 │   ├── app/                    # Next.js pages
 │   │   ├── deposit/           # Deposit page

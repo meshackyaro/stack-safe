@@ -63,8 +63,8 @@ plan:
     - id: 0
       transactions:
         - emulated-contract-publish:
-            contract-name: StackSafe
+            contract-name: GrowFundz
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
-            path: contracts/StackSafe.clar
+            path: contracts/GrowFundz.clar
             clarity-version: 3
       epoch: "3.2"

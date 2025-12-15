@@ -1,12 +1,12 @@
 [project]
-name = 'StackSafe'
+name = 'GrowFundz'
 description = ''
 authors = []
 telemetry = true
 cache_dir = './.cache'
 requirements = []
-[contracts.StackSafe]
-path = 'contracts/StackSafe.clar'
+[contracts.GrowFundz]
+path = 'contracts/GrowFundz.clar'
 clarity_version = 3
 epoch = 'latest'
 [repl.analysis]

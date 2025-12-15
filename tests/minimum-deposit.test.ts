@@ -19,7 +19,7 @@ describe('Minimum Deposit Enforcement', () => {
   describe('Price Oracle System', () => {
     it('should have default STX price set', () => {
       const result = simnet.callReadOnlyFn(
-        'StackSafe',
+        'GrowFundz',
         'get-stx-usd-price',
         [],
         deployer
@@ -29,7 +29,7 @@ describe('Minimum Deposit Enforcement', () => {
 
     it('should calculate correct minimum STX amount', () => {
       const result = simnet.callReadOnlyFn(
-        'StackSafe',
+        'GrowFundz',
         'calculate-minimum-stx-amount',
         [],
         deployer
@@ -40,7 +40,7 @@ describe('Minimum Deposit Enforcement', () => {
 
     it('should return USD minimum deposit amount', () => {
       const result = simnet.callReadOnlyFn(
-        'StackSafe',
+        'GrowFundz',
         'get-usd-minimum-deposit',
         [],
         deployer
@@ -51,7 +51,7 @@ describe('Minimum Deposit Enforcement', () => {
     it('should validate deposit amounts correctly', () => {
       // Test valid amount (4 STX = 4,000,000 microstacks)
       const validResult = simnet.callReadOnlyFn(
-        'StackSafe',
+        'GrowFundz',
         'is-valid-deposit-amount',
         [Cl.uint(4000000)],
         deployer
@@ -60,7 +60,7 @@ describe('Minimum Deposit Enforcement', () => {
 
       // Test invalid amount (1 STX = 1,000,000 microstacks)
       const invalidResult = simnet.callReadOnlyFn(
-        'StackSafe',
+        'GrowFundz',
         'is-valid-deposit-amount',
         [Cl.uint(1000000)],
         deployer
@@ -70,7 +70,7 @@ describe('Minimum Deposit Enforcement', () => {
 
     it('should provide comprehensive deposit validation info', () => {
       const result = simnet.callReadOnlyFn(
-        'StackSafe',
+        'GrowFundz',
         'get-deposit-validation-info',
         [Cl.uint(5000000)], // 5 STX
         deployer
@@ -90,7 +90,7 @@ describe('Minimum Deposit Enforcement', () => {
   describe('Price Oracle Authority Management', () => {
     it('should set deployer as initial price oracle authority', () => {
       const result = simnet.callReadOnlyFn(
-        'StackSafe',
+        'GrowFundz',
         'get-price-oracle-authority',
         [],
         deployer
@@ -101,7 +101,7 @@ describe('Minimum Deposit Enforcement', () => {
     it('should allow authority to update STX price', () => {
       // Update price to $1.00 (1,000,000 with 6 decimal precision)
       const updateResult = simnet.callPublicFn(
-        'StackSafe',
+        'GrowFundz',
         'update-stx-price',
         [Cl.uint(1000000)],
         deployer
@@ -110,7 +110,7 @@ describe('Minimum Deposit Enforcement', () => {
 
       // Verify price was updated
       const priceResult = simnet.callReadOnlyFn(
-        'StackSafe',
+        'GrowFundz',
         'get-stx-usd-price',
         [],
         deployer
@@ -119,7 +119,7 @@ describe('Minimum Deposit Enforcement', () => {
 
       // Verify minimum STX amount was recalculated (should be 2 STX now)
       const minResult = simnet.callReadOnlyFn(
-        'StackSafe',
+        'GrowFundz',
         'calculate-minimum-stx-amount',
         [],
         deployer
@@ -129,7 +129,7 @@ describe('Minimum Deposit Enforcement', () => {
 
     it('should reject price updates from unauthorized users', () => {
       const updateResult = simnet.callPublicFn(
-        'StackSafe',
+        'GrowFundz',
         'update-stx-price',
         [Cl.uint(750000)], // $0.75
         address1
@@ -140,7 +140,7 @@ describe('Minimum Deposit Enforcement', () => {
     it('should reject invalid price values', () => {
       // Too low (below $0.01)
       const tooLowResult = simnet.callPublicFn(
-        'StackSafe',
+        'GrowFundz',
         'update-stx-price',
         [Cl.uint(5000)], // $0.005
         deployer
@@ -149,7 +149,7 @@ describe('Minimum Deposit Enforcement', () => {
 
       // Too high (above $100.00)
       const tooHighResult = simnet.callPublicFn(
-        'StackSafe',
+        'GrowFundz',
         'update-stx-price',
         [Cl.uint(200000000)], // $200.00
         deployer
@@ -160,7 +160,7 @@ describe('Minimum Deposit Enforcement', () => {
     it('should allow authority transfer', () => {
       // Transfer authority to address1
       const transferResult = simnet.callPublicFn(
-        'StackSafe',
+        'GrowFundz',
         'update-price-oracle-authority',
         [Cl.principal(address1)],
         deployer
@@ -169,7 +169,7 @@ describe('Minimum Deposit Enforcement', () => {
 
       // Verify authority was transferred
       const authorityResult = simnet.callReadOnlyFn(
-        'StackSafe',
+        'GrowFundz',
         'get-price-oracle-authority',
         [],
         deployer
@@ -178,7 +178,7 @@ describe('Minimum Deposit Enforcement', () => {
 
       // Verify new authority can update price
       const updateResult = simnet.callPublicFn(
-        'StackSafe',
+        'GrowFundz',
         'update-stx-price',
         [Cl.uint(800000)], // $0.80
         address1
@@ -191,7 +191,7 @@ describe('Minimum Deposit Enforcement', () => {
     beforeEach(() => {
       // Reset price to $0.50 for consistent testing
       simnet.callPublicFn(
-        'StackSafe',
+        'GrowFundz',
         'update-stx-price',
         [Cl.uint(500000)],
         deployer // Use deployer as authority
@@ -201,7 +201,7 @@ describe('Minimum Deposit Enforcement', () => {
     it('should reject deposits below minimum amount', () => {
       // Try to deposit 1 STX (below 4 STX minimum)
       const depositResult = simnet.callPublicFn(
-        'StackSafe',
+        'GrowFundz',
         'deposit',
         [
           Cl.uint(1000000), // 1 STX in microstacks
@@ -215,7 +215,7 @@ describe('Minimum Deposit Enforcement', () => {
     it('should accept deposits at minimum amount', () => {
       // Deposit exactly 4 STX (minimum amount)
       const depositResult = simnet.callPublicFn(
-        'StackSafe',
+        'GrowFundz',
         'deposit',
         [
           Cl.uint(4000000), // 4 STX in microstacks
@@ -229,7 +229,7 @@ describe('Minimum Deposit Enforcement', () => {
     it('should accept deposits above minimum amount', () => {
       // Deposit 10 STX (above minimum)
       const depositResult = simnet.callPublicFn(
-        'StackSafe',
+        'GrowFundz',
         'create-deposit',
         [
           Cl.uint(10000000), // 10 STX in microstacks
@@ -244,7 +244,7 @@ describe('Minimum Deposit Enforcement', () => {
     it('should enforce minimum on create-deposit function', () => {
       // Try to create deposit below minimum
       const depositResult = simnet.callPublicFn(
-        'StackSafe',
+        'GrowFundz',
         'create-deposit',
         [
           Cl.uint(2000000), // 2 STX in microstacks
@@ -261,7 +261,7 @@ describe('Minimum Deposit Enforcement', () => {
     it('should update minimum when price changes', () => {
       // Change price to $2.00 (should make minimum 1 STX)
       const updateResult = simnet.callPublicFn(
-        'StackSafe',
+        'GrowFundz',
         'update-stx-price',
         [Cl.uint(2000000)], // $2.00
         deployer // Use deployer as authority
@@ -270,7 +270,7 @@ describe('Minimum Deposit Enforcement', () => {
 
       // Check new minimum
       const minResult = simnet.callReadOnlyFn(
-        'StackSafe',
+        'GrowFundz',
         'calculate-minimum-stx-amount',
         [],
         deployer
@@ -279,7 +279,7 @@ describe('Minimum Deposit Enforcement', () => {
 
       // Verify 1 STX deposit is now valid
       const validResult = simnet.callReadOnlyFn(
-        'StackSafe',
+        'GrowFundz',
         'is-valid-deposit-amount',
         [Cl.uint(1000000)],
         deployer
@@ -288,7 +288,7 @@ describe('Minimum Deposit Enforcement', () => {
 
       // Verify 0.5 STX deposit is still invalid
       const invalidResult = simnet.callReadOnlyFn(
-        'StackSafe',
+        'GrowFundz',
         'is-valid-deposit-amount',
         [Cl.uint(500000)],
         deployer
@@ -299,14 +299,14 @@ describe('Minimum Deposit Enforcement', () => {
     it('should handle edge case prices correctly', () => {
       // Test with very low price ($0.01)
       simnet.callPublicFn(
-        'StackSafe',
+        'GrowFundz',
         'update-stx-price',
         [Cl.uint(10000)], // $0.01
         deployer
       );
 
       const minResult = simnet.callReadOnlyFn(
-        'StackSafe',
+        'GrowFundz',
         'calculate-minimum-stx-amount',
         [],
         deployer
@@ -315,14 +315,14 @@ describe('Minimum Deposit Enforcement', () => {
 
       // Test with high price ($10.00)
       simnet.callPublicFn(
-        'StackSafe',
+        'GrowFundz',
         'update-stx-price',
         [Cl.uint(10000000)], // $10.00
         deployer
       );
 
       const minResult2 = simnet.callReadOnlyFn(
-        'StackSafe',
+        'GrowFundz',
         'calculate-minimum-stx-amount',
         [],
         deployer
@@ -337,7 +337,7 @@ describe('Minimum Deposit Enforcement', () => {
       
       // Update price
       simnet.callPublicFn(
-        'StackSafe',
+        'GrowFundz',
         'update-stx-price',
         [Cl.uint(1500000)], // $1.50
         deployer
@@ -345,7 +345,7 @@ describe('Minimum Deposit Enforcement', () => {
 
       // Check last update block
       const updateResult = simnet.callReadOnlyFn(
-        'StackSafe',
+        'GrowFundz',
         'get-last-price-update',
         [],
         deployer

@@ -30,7 +30,7 @@ export default function ContractNotDeployedBanner() {
           </h3>
           <div className="mt-2 text-sm text-yellow-300">
             <p className="mb-2">
-              The StackSafe contract hasn't been deployed to testnet yet. To use this application:
+              The GrowFundz contract hasn't been deployed to testnet yet. To use this application:
             </p>
             <ol className="list-decimal list-inside space-y-1 ml-2">
               <li>Deploy the contract: <code className="bg-yellow-900/30 px-2 py-1 rounded">clarinet deployments apply --testnet</code></li>

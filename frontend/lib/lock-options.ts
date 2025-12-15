@@ -1,5 +1,5 @@
 /**
- * Lock Duration Options for StackSafe
+ * Lock Duration Options for GrowFundz
  * Maps user-friendly time periods to contract lock option values
  * Maintains parity with the smart contract's lock duration constants
  */

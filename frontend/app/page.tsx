@@ -1,5 +1,5 @@
 /**
- * Dashboard Page - Main landing page for the StackSafe dApp
+ * Dashboard Page - Main landing page for the GrowFundz dApp
  * Shows wallet connection, vault info, and quick action buttons
  */
 
@@ -32,7 +32,7 @@ export default function Dashboard() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">StackSafe Dashboard</h1>
+        <h1 className="text-3xl font-bold text-white mb-2">GrowFundz Dashboard</h1>
         <p className="text-lg text-gray-300">
           A decentralized savings vault with flexible time-based lock periods on Stacks blockchain
         </p>

@@ -2,7 +2,7 @@
 
 /**
  * Development Setup Script
- * Helps developers get started with the StackSafe frontend
+ * Helps developers get started with the GrowFundz frontend
  */
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -10,7 +10,7 @@ const fs = require("fs");
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const path = require("path");
 
-console.log("📚 StackSafe Frontend Setup\n");
+console.log("📚 GrowFundz Frontend Setup\n");
 
 // Check if .env.local exists
 const envPath = path.join(__dirname, "..", ".env.local");
@@ -22,7 +22,7 @@ if (!fs.existsSync(envPath)) {
 # Reset for fresh deployment - update these values after deploying the contract
 NEXT_PUBLIC_NETWORK=testnet
 NEXT_PUBLIC_CONTRACT_ADDRESS=DEPLOY_CONTRACT_FIRST
-NEXT_PUBLIC_CONTRACT_NAME=StackSafe
+NEXT_PUBLIC_CONTRACT_NAME=GrowFundz
 
 # Network URLs
 NEXT_PUBLIC_STACKS_API_URL=https://api.testnet.hiro.so
@@ -55,7 +55,7 @@ console.log("4. Open http://localhost:3000");
 
 console.log("\n🔧 Configuration:");
 console.log("- Network: testnet (api.testnet.hiro.so)");
-console.log("- Contract: StackSafe (needs deployment)");
+console.log("- Contract: GrowFundz (needs deployment)");
 console.log("- Frontend: localhost:3000");
 
 console.log("\n💡 Tips:");

@@ -1,5 +1,5 @@
 /**
- * Contract interaction utilities for StackSafe
+ * Contract interaction utilities for GrowFundz
  * Handles all read and write operations with the updated time-based lock Clarity smart contract
  * Updated to support the new contract's time-based lock periods and enhanced functionality
  */

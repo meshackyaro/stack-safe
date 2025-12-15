@@ -15,7 +15,7 @@ async function testContractReads() {
 
   // Contract details
   const contractAddress = "DEPLOY_CONTRACT_FIRST";
-  const contractName = "StackSafe";
+  const contractName = "GrowFundz";
   const network = "testnet";
 
   console.log("📝 Contract:", `${contractAddress}.${contractName}`);

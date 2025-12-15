@@ -67,7 +67,7 @@ export default function VaultInfo({ refreshTrigger, onRefresh }: VaultInfoProps 
           const name = process.env.NEXT_PUBLIC_CONTRACT_NAME;
           
           if (!address || address === 'DEPLOY_CONTRACT_FIRST') {
-            throw new Error('Contract not deployed yet. Please deploy the StackSafe contract to testnet first, then update NEXT_PUBLIC_CONTRACT_ADDRESS in .env.local');
+            throw new Error('Contract not deployed yet. Please deploy the GrowFundz contract to testnet first, then update NEXT_PUBLIC_CONTRACT_ADDRESS in .env.local');
           }
           
           throw new Error(`Contract configuration is invalid. Address: ${address || 'MISSING'}, Name: ${name || 'MISSING'}`);
@@ -164,7 +164,7 @@ export default function VaultInfo({ refreshTrigger, onRefresh }: VaultInfoProps 
           const name = process.env.NEXT_PUBLIC_CONTRACT_NAME;
           
           if (!address || address === 'DEPLOY_CONTRACT_FIRST') {
-            throw new Error('Contract not deployed yet. Please deploy the StackSafe contract to testnet first, then update NEXT_PUBLIC_CONTRACT_ADDRESS in .env.local');
+            throw new Error('Contract not deployed yet. Please deploy the GrowFundz contract to testnet first, then update NEXT_PUBLIC_CONTRACT_ADDRESS in .env.local');
           }
           
           throw new Error(`Contract configuration is invalid. Address: ${address || 'MISSING'}, Name: ${name || 'MISSING'}`);
@@ -445,7 +445,7 @@ export default function VaultInfo({ refreshTrigger, onRefresh }: VaultInfoProps 
           </>
         ) : (
           <div className="text-center py-4">
-            <p className="text-gray-500 text-sm mb-3">Ready to start saving with StackSafe?</p>
+            <p className="text-gray-500 text-sm mb-3">Ready to start saving with GrowFundz?</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-gray-400">
               <div className="p-3 bg-blue-50 rounded">
                 <p className="font-medium text-blue-800 mb-1">💡 Quick Start</p>

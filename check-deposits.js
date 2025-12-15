@@ -24,7 +24,7 @@ async function checkDeposits() {
 
   // Contract details
   const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
-  const contractName = process.env.NEXT_PUBLIC_CONTRACT_NAME;
+  const contractName = process.env.NEXT_PUBLIC_CONTRACT_NAME || "GrowFundz";
 
   console.log("📝 Contract:", `${contractAddress}.${contractName}`);
   console.log("\n" + "=".repeat(60));

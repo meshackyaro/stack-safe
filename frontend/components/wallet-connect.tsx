@@ -45,7 +45,7 @@ export default function WalletConnect() {
     <div className="flex flex-col items-center p-6 bg-gray-800 dark:bg-gray-800 border border-gray-700 rounded-lg">
       <h3 className="text-lg font-medium text-white mb-2">Connect Your Wallet</h3>
       <p className="text-sm text-gray-400 dark:text-gray-300 mb-4 text-center">
-        Connect your Stacks wallet to interact with StackSafe
+        Connect your Stacks wallet to interact with GrowFundz
       </p>
       
       {error && (
