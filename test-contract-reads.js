@@ -14,9 +14,8 @@ async function testContractReads() {
   console.log("👤 User Address:", userAddress);
 
   // Contract details
-  const contractAddress =
-    process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "DEPLOY_CONTRACT_FIRST";
-  const contractName = process.env.NEXT_PUBLIC_CONTRACT_NAME || "StackSafe";
+  const contractAddress = "DEPLOY_CONTRACT_FIRST";
+  const contractName = "StackSafe";
   const network = "testnet";
 
   console.log("📝 Contract:", `${contractAddress}.${contractName}`);

@@ -65,6 +65,8 @@ echo "📋 Check 6: Test files"
 if grep -q "ST3QGZ6VKAQVFT5YFXWMDQGSXK1NVAH8DJ8S7M5SG" test-contract-reads.js 2>/dev/null; then
     echo "❌ Test file has old contract address!"
     ERRORS=$((ERRORS + 1))
+elif grep -q "DEPLOY_CONTRACT_FIRST" test-contract-reads.js 2>/dev/null; then
+    echo "✅ Test files have placeholder address (ready for deployment)"
 else
     echo "✅ Test files are clean"
 fi

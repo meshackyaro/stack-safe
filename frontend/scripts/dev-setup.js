@@ -21,7 +21,7 @@ if (!fs.existsSync(envPath)) {
   const defaultEnv = `# Stacks Network Configuration
 # Reset for fresh deployment - update these values after deploying the contract
 NEXT_PUBLIC_NETWORK=testnet
-NEXT_PUBLIC_CONTRACT_ADDRESS=
+NEXT_PUBLIC_CONTRACT_ADDRESS=DEPLOY_CONTRACT_FIRST
 NEXT_PUBLIC_CONTRACT_NAME=StackSafe
 
 # Network URLs
