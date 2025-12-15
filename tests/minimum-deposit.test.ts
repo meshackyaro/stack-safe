@@ -5,10 +5,14 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Cl } from '@stacks/transactions';
+import "@hirosystems/clarinet-sdk/vitest";
+
+// Access simnet from global context (provided by vitest-environment-clarinet)
+declare const simnet: any;
 
 const accounts = simnet.getAccounts();
 const address1 = accounts.get('wallet_1')!;
-const deployer = accounts.get('deployer')!;
+const deployer = accounts.get('deployer')!
 
 describe('Minimum Deposit Enforcement', () => {
   beforeEach(() => {
@@ -24,7 +28,7 @@ describe('Minimum Deposit Enforcement', () => {
         [],
         deployer
       );
-      expect(result.result).toBeUint(500000); // $0.50 with 6 decimal precision
+      expect(result.result).toEqual(Cl.uint(500000)); // $0.50 with 6 decimal precision
     });
 
     it('should calculate correct minimum STX amount', () => {
@@ -35,7 +39,7 @@ describe('Minimum Deposit Enforcement', () => {
         deployer
       );
       // With $0.50 price, minimum should be 4 STX (4,000,000 microstacks)
-      expect(result.result).toBeUint(4000000);
+      expect(result.result).toEqual(Cl.uint(4000000));
     });
 
     it('should return USD minimum deposit amount', () => {
@@ -45,7 +49,7 @@ describe('Minimum Deposit Enforcement', () => {
         [],
         deployer
       );
-      expect(result.result).toBeUint(2000000); // $2.00 with 6 decimal precision
+      expect(result.result).toEqual(Cl.uint(2000000)); // $2.00 with 6 decimal precision
     });
 
     it('should validate deposit amounts correctly', () => {
@@ -56,7 +60,7 @@ describe('Minimum Deposit Enforcement', () => {
         [Cl.uint(4000000)],
         deployer
       );
-      expect(validResult.result).toBeBool(true);
+      expect(validResult.result).toEqual(Cl.bool(true));
 
       // Test invalid amount (1 STX = 1,000,000 microstacks)
       const invalidResult = simnet.callReadOnlyFn(
@@ -65,7 +69,7 @@ describe('Minimum Deposit Enforcement', () => {
         [Cl.uint(1000000)],
         deployer
       );
-      expect(invalidResult.result).toBeBool(false);
+      expect(invalidResult.result).toEqual(Cl.bool(false));
     });
 
     it('should provide comprehensive deposit validation info', () => {
@@ -76,14 +80,14 @@ describe('Minimum Deposit Enforcement', () => {
         deployer
       );
 
-      expect(result.result).toBeTuple({
+      expect(result.result).toEqual(Cl.tuple({
         'minimum-stx-required': Cl.uint(4000000), // 4 STX
         'stx-price': Cl.uint(500000), // $0.50
         'usd-minimum': Cl.uint(2000000), // $2.00
         'deposit-usd-value': Cl.uint(2500000), // $2.50 (5 STX * $0.50)
         'is-valid': Cl.bool(true),
         'last-price-update': Cl.uint(0)
-      });
+      }));
     });
   });
 
@@ -95,7 +99,7 @@ describe('Minimum Deposit Enforcement', () => {
         [],
         deployer
       );
-      expect(result.result).toBePrincipal(deployer);
+      expect(result.result).toEqual(Cl.principal(deployer));
     });
 
     it('should allow authority to update STX price', () => {
@@ -106,7 +110,7 @@ describe('Minimum Deposit Enforcement', () => {
         [Cl.uint(1000000)],
         deployer
       );
-      expect(updateResult.result).toBeOk(Cl.uint(1000000));
+      expect(updateResult.result).toEqual(Cl.ok(Cl.uint(1000000)));
 
       // Verify price was updated
       const priceResult = simnet.callReadOnlyFn(
@@ -115,7 +119,7 @@ describe('Minimum Deposit Enforcement', () => {
         [],
         deployer
       );
-      expect(priceResult.result).toBeUint(1000000);
+      expect(priceResult.result).toEqual(Cl.uint(1000000));
 
       // Verify minimum STX amount was recalculated (should be 2 STX now)
       const minResult = simnet.callReadOnlyFn(
@@ -124,7 +128,7 @@ describe('Minimum Deposit Enforcement', () => {
         [],
         deployer
       );
-      expect(minResult.result).toBeUint(2000000); // 2 STX
+      expect(minResult.result).toEqual(Cl.uint(2000000)); // 2 STX
     });
 
     it('should reject price updates from unauthorized users', () => {
@@ -134,7 +138,7 @@ describe('Minimum Deposit Enforcement', () => {
         [Cl.uint(750000)], // $0.75
         address1
       );
-      expect(updateResult.result).toBeErr(Cl.uint(103)); // ERR-UNAUTHORIZED
+      expect(updateResult.result).toEqual(Cl.error(Cl.uint(103))); // ERR-UNAUTHORIZED
     });
 
     it('should reject invalid price values', () => {
@@ -145,7 +149,7 @@ describe('Minimum Deposit Enforcement', () => {
         [Cl.uint(5000)], // $0.005
         deployer
       );
-      expect(tooLowResult.result).toBeErr(Cl.uint(100)); // ERR-INVALID-AMOUNT
+      expect(tooLowResult.result).toEqual(Cl.error(Cl.uint(100))); // ERR-INVALID-AMOUNT
 
       // Too high (above $100.00)
       const tooHighResult = simnet.callPublicFn(
@@ -154,7 +158,7 @@ describe('Minimum Deposit Enforcement', () => {
         [Cl.uint(200000000)], // $200.00
         deployer
       );
-      expect(tooHighResult.result).toBeErr(Cl.uint(100)); // ERR-INVALID-AMOUNT
+      expect(tooHighResult.result).toEqual(Cl.error(Cl.uint(100))); // ERR-INVALID-AMOUNT
     });
 
     it('should allow authority transfer', () => {
@@ -165,7 +169,7 @@ describe('Minimum Deposit Enforcement', () => {
         [Cl.principal(address1)],
         deployer
       );
-      expect(transferResult.result).toBeOk(Cl.principal(address1));
+      expect(transferResult.result).toEqual(Cl.ok(Cl.principal(address1)));
 
       // Verify authority was transferred
       const authorityResult = simnet.callReadOnlyFn(
@@ -174,7 +178,7 @@ describe('Minimum Deposit Enforcement', () => {
         [],
         deployer
       );
-      expect(authorityResult.result).toBePrincipal(address1);
+      expect(authorityResult.result).toEqual(Cl.principal(address1));
 
       // Verify new authority can update price
       const updateResult = simnet.callPublicFn(
@@ -183,7 +187,7 @@ describe('Minimum Deposit Enforcement', () => {
         [Cl.uint(800000)], // $0.80
         address1
       );
-      expect(updateResult.result).toBeOk(Cl.uint(800000));
+      expect(updateResult.result).toEqual(Cl.ok(Cl.uint(800000)));
     });
   });
 
@@ -209,7 +213,7 @@ describe('Minimum Deposit Enforcement', () => {
         ],
         address1
       );
-      expect(depositResult.result).toBeErr(Cl.uint(114)); // ERR-BELOW-MINIMUM-DEPOSIT
+      expect(depositResult.result).toEqual(Cl.error(Cl.uint(114))); // ERR-BELOW-MINIMUM-DEPOSIT
     });
 
     it('should accept deposits at minimum amount', () => {
@@ -223,7 +227,7 @@ describe('Minimum Deposit Enforcement', () => {
         ],
         address1
       );
-      expect(depositResult.result).toBeOk(Cl.uint(4000000));
+      expect(depositResult.result).toEqual(Cl.ok(Cl.uint(4000000)));
     });
 
     it('should accept deposits above minimum amount', () => {
@@ -238,7 +242,7 @@ describe('Minimum Deposit Enforcement', () => {
         ],
         address1
       );
-      expect(depositResult.result).toBeOk(Cl.uint(1)); // First deposit ID
+      expect(depositResult.result).toEqual(Cl.ok(Cl.uint(1))); // First deposit ID
     });
 
     it('should enforce minimum on create-deposit function', () => {
@@ -253,7 +257,7 @@ describe('Minimum Deposit Enforcement', () => {
         ],
         address1
       );
-      expect(depositResult.result).toBeErr(Cl.uint(114)); // ERR-BELOW-MINIMUM-DEPOSIT
+      expect(depositResult.result).toEqual(Cl.error(Cl.uint(114))); // ERR-BELOW-MINIMUM-DEPOSIT
     });
   });
 
@@ -266,7 +270,7 @@ describe('Minimum Deposit Enforcement', () => {
         [Cl.uint(2000000)], // $2.00
         deployer // Use deployer as authority
       );
-      expect(updateResult.result).toBeOk(Cl.uint(2000000));
+      expect(updateResult.result).toEqual(Cl.ok(Cl.uint(2000000)));
 
       // Check new minimum
       const minResult = simnet.callReadOnlyFn(
@@ -275,7 +279,7 @@ describe('Minimum Deposit Enforcement', () => {
         [],
         deployer
       );
-      expect(minResult.result).toBeUint(1000000); // 1 STX
+      expect(minResult.result).toEqual(Cl.uint(1000000)); // 1 STX
 
       // Verify 1 STX deposit is now valid
       const validResult = simnet.callReadOnlyFn(
@@ -284,7 +288,7 @@ describe('Minimum Deposit Enforcement', () => {
         [Cl.uint(1000000)],
         deployer
       );
-      expect(validResult.result).toBeBool(true);
+      expect(validResult.result).toEqual(Cl.bool(true));
 
       // Verify 0.5 STX deposit is still invalid
       const invalidResult = simnet.callReadOnlyFn(
@@ -293,7 +297,7 @@ describe('Minimum Deposit Enforcement', () => {
         [Cl.uint(500000)],
         deployer
       );
-      expect(invalidResult.result).toBeBool(false);
+      expect(invalidResult.result).toEqual(Cl.bool(false));
     });
 
     it('should handle edge case prices correctly', () => {
@@ -311,7 +315,7 @@ describe('Minimum Deposit Enforcement', () => {
         [],
         deployer
       );
-      expect(minResult.result).toBeUint(200000000); // 200 STX
+      expect(minResult.result).toEqual(Cl.uint(200000000)); // 200 STX
 
       // Test with high price ($10.00)
       simnet.callPublicFn(
@@ -327,7 +331,7 @@ describe('Minimum Deposit Enforcement', () => {
         [],
         deployer
       );
-      expect(minResult2.result).toBeUint(200000); // 0.2 STX
+      expect(minResult2.result).toEqual(Cl.uint(200000)); // 0.2 STX
     });
   });
 
@@ -350,7 +354,7 @@ describe('Minimum Deposit Enforcement', () => {
         [],
         deployer
       );
-      expect(updateResult.result).toBeUint(initialBlock + 1);
+      expect(updateResult.result).toEqual(Cl.uint(initialBlock + 1));
     });
   });
 });

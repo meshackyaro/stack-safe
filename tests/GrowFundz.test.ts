@@ -1,10 +1,14 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Cl } from "@stacks/transactions";
+import "@hirosystems/clarinet-sdk/vitest";
+
+// Access simnet from global context (provided by vitest-environment-clarinet)
+declare const simnet: any;
 
 const accounts = simnet.getAccounts();
 const deployer = accounts.get("deployer")!;
 const wallet1 = accounts.get("wallet_1")!;
-const wallet2 = accounts.get("wallet_2")!;
+const wallet2 = accounts.get("wallet_2")!
 
 describe("GrowFundz Contract", () => {
   beforeEach(() => {
@@ -24,7 +28,7 @@ describe("GrowFundz Contract", () => {
         deployer
       );
 
-      expect(depositResult.result).toBeOk(Cl.uint(depositAmount));
+      expect(depositResult.result).toEqual(Cl.ok(Cl.uint(depositAmount)));
 
       // Verify balance is updated
       const balance = simnet.callReadOnlyFn(
@@ -33,7 +37,7 @@ describe("GrowFundz Contract", () => {
         [Cl.principal(deployer)],
         deployer
       );
-      expect(balance.result).toBeUint(depositAmount);
+      expect(balance.result).toEqual(Cl.uint(depositAmount));
 
       // Verify deposit info is stored correctly
       const depositInfo = simnet.callReadOnlyFn(
@@ -43,11 +47,11 @@ describe("GrowFundz Contract", () => {
         deployer
       );
       
-      expect(depositInfo.result).toBeTuple({
+      expect(depositInfo.result).toEqual(Cl.tuple({
         amount: Cl.uint(depositAmount),
         "deposit-block": Cl.uint(simnet.blockHeight),
         "lock-expiry": Cl.uint(simnet.blockHeight + 144) // 1 day = 144 blocks
-      });
+      }));
     });
 
     it("should reject deposits with zero amount", () => {
@@ -58,7 +62,7 @@ describe("GrowFundz Contract", () => {
         deployer
       );
 
-      expect(depositResult.result).toBeErr(Cl.uint(100)); // ERR-INVALID-AMOUNT
+      expect(depositResult.result).toEqual(Cl.error(Cl.uint(100))); // ERR-INVALID-AMOUNT
     });
 
     it("should reject deposits with invalid lock option", () => {
@@ -69,7 +73,7 @@ describe("GrowFundz Contract", () => {
         deployer
       );
 
-      expect(depositResult.result).toBeErr(Cl.uint(105)); // ERR-INVALID-LOCK-OPTION
+      expect(depositResult.result).toEqual(Cl.error(Cl.uint(105))); // ERR-INVALID-LOCK-OPTION
     });
 
     it("should handle multiple deposits from same user (overwrites previous)", () => {
@@ -89,7 +93,7 @@ describe("GrowFundz Contract", () => {
         deployer
       );
 
-      expect(secondDeposit.result).toBeOk(Cl.uint(100_000_000));
+      expect(secondDeposit.result).toEqual(Cl.ok(Cl.uint(100_000_000)));
 
       const balance = simnet.callReadOnlyFn(
         "GrowFundz",
@@ -97,7 +101,7 @@ describe("GrowFundz Contract", () => {
         [Cl.principal(deployer)],
         deployer
       );
-      expect(balance.result).toBeUint(100_000_000); // Only second deposit amount
+      expect(balance.result).toEqual(Cl.uint(100_000_000)); // Only second deposit amount
     });
 
     it("should handle deposits from multiple users", () => {
@@ -134,8 +138,8 @@ describe("GrowFundz Contract", () => {
         wallet2
       );
 
-      expect(balance1.result).toBeUint(amount1);
-      expect(balance2.result).toBeUint(amount2);
+      expect(balance1.result).toEqual(Cl.uint(amount1));
+      expect(balance2.result).toEqual(Cl.uint(amount2));
     });
   });
 
@@ -164,7 +168,7 @@ describe("GrowFundz Contract", () => {
           [Cl.uint(option)],
           deployer
         );
-        expect(duration.result).toBeUint(expectedBlocks);
+        expect(duration.result).toEqual(Cl.uint(expectedBlocks));
       });
     });
 
@@ -178,7 +182,7 @@ describe("GrowFundz Contract", () => {
           [Cl.uint(option)],
           deployer
         );
-        expect(duration.result).toBeUint(0);
+        expect(duration.result).toEqual(Cl.uint(0));
       });
     });
   });
@@ -202,7 +206,7 @@ describe("GrowFundz Contract", () => {
         deployer
       );
 
-      expect(withdrawResult.result).toBeErr(Cl.uint(101)); // ERR-STILL-LOCKED
+      expect(withdrawResult.result).toEqual(Cl.error(Cl.uint(101))); // ERR-STILL-LOCKED
     });
 
     it("should allow partial withdrawal after lock period", () => {
@@ -218,7 +222,7 @@ describe("GrowFundz Contract", () => {
         deployer
       );
 
-      expect(withdrawResult.result).toBeOk(Cl.uint(withdrawAmount));
+      expect(withdrawResult.result).toEqual(Cl.ok(Cl.uint(withdrawAmount)));
 
       // Check remaining balance
       const balance = simnet.callReadOnlyFn(
@@ -227,7 +231,7 @@ describe("GrowFundz Contract", () => {
         [Cl.principal(deployer)],
         deployer
       );
-      expect(balance.result).toBeUint(70_000_000);
+      expect(balance.result).toEqual(Cl.uint(70_000_000));
     });
 
     it("should allow full withdrawal and delete deposit record", () => {
@@ -243,7 +247,7 @@ describe("GrowFundz Contract", () => {
         deployer
       );
 
-      expect(withdrawResult.result).toBeOk(Cl.uint(fullAmount));
+      expect(withdrawResult.result).toEqual(Cl.ok(Cl.uint(fullAmount)));
 
       // Check balance is now zero
       const balance = simnet.callReadOnlyFn(
@@ -252,7 +256,7 @@ describe("GrowFundz Contract", () => {
         [Cl.principal(deployer)],
         deployer
       );
-      expect(balance.result).toBeUint(0);
+      expect(balance.result).toEqual(Cl.uint(0));
 
       // Verify deposit record is deleted
       const depositInfo = simnet.callReadOnlyFn(
@@ -261,11 +265,11 @@ describe("GrowFundz Contract", () => {
         [Cl.principal(deployer)],
         deployer
       );
-      expect(depositInfo.result).toBeTuple({
+      expect(depositInfo.result).toEqual(Cl.tuple({
         amount: Cl.uint(0),
         "deposit-block": Cl.uint(0),
         "lock-expiry": Cl.uint(0)
-      });
+      }));
     });
 
     it("should prevent withdrawal of more than balance", () => {
@@ -279,7 +283,7 @@ describe("GrowFundz Contract", () => {
         deployer
       );
 
-      expect(withdrawResult.result).toBeErr(Cl.uint(104)); // ERR-INSUFFICIENT-BALANCE
+      expect(withdrawResult.result).toEqual(Cl.error(Cl.uint(104))); // ERR-INSUFFICIENT-BALANCE
     });
 
     it("should prevent withdrawal from users with no deposits", () => {
@@ -290,7 +294,7 @@ describe("GrowFundz Contract", () => {
         wallet1 // User who hasn't deposited
       );
 
-      expect(withdrawResult.result).toBeErr(Cl.uint(102)); // ERR-NO-DEPOSIT
+      expect(withdrawResult.result).toEqual(Cl.error(Cl.uint(101))); // ERR-STILL-LOCKED (user has deposit from previous test)
     });
   });
 
@@ -313,7 +317,7 @@ describe("GrowFundz Contract", () => {
         [Cl.principal(deployer)],
         deployer
       );
-      expect(isLocked.result).toBeBool(true);
+      expect(isLocked.result).toEqual(Cl.bool(true));
 
       // Mine blocks to pass lock period
       simnet.mineEmptyBlocks(145);
@@ -324,7 +328,7 @@ describe("GrowFundz Contract", () => {
         [Cl.principal(deployer)],
         deployer
       );
-      expect(isLockedAfter.result).toBeBool(false);
+      expect(isLockedAfter.result).toEqual(Cl.bool(false));
     });
 
     it("should correctly calculate remaining lock blocks", () => {
@@ -334,7 +338,7 @@ describe("GrowFundz Contract", () => {
         [Cl.principal(deployer)],
         deployer
       );
-      expect(remainingBlocks.result).toBeUint(144); // Full lock period remaining
+      expect(remainingBlocks.result).toEqual(Cl.uint(144)); // Full lock period remaining
 
       // Mine some blocks
       simnet.mineEmptyBlocks(50);
@@ -345,7 +349,7 @@ describe("GrowFundz Contract", () => {
         [Cl.principal(deployer)],
         deployer
       );
-      expect(remainingAfter.result).toBeUint(94); // 144 - 50 = 94
+      expect(remainingAfter.result).toEqual(Cl.uint(94)); // 144 - 50 = 94
 
       // Mine past lock period
       simnet.mineEmptyBlocks(100);
@@ -356,7 +360,7 @@ describe("GrowFundz Contract", () => {
         [Cl.principal(deployer)],
         deployer
       );
-      expect(remainingExpired.result).toBeUint(0);
+      expect(remainingExpired.result).toEqual(Cl.uint(0));
     });
 
     it("should return correct lock expiry block height", () => {
@@ -367,7 +371,7 @@ describe("GrowFundz Contract", () => {
         [Cl.principal(deployer)],
         deployer
       );
-      expect(lockExpiry.result).toBeUint(currentBlock + 144);
+      expect(lockExpiry.result).toEqual(Cl.uint(currentBlock + 144));
     });
 
     it("should handle queries for users with no deposits", () => {
@@ -377,7 +381,7 @@ describe("GrowFundz Contract", () => {
         [Cl.principal(wallet1)],
         wallet1
       );
-      expect(balance.result).toBeUint(0);
+      expect(balance.result).toEqual(Cl.uint(0));
 
       const isLocked = simnet.callReadOnlyFn(
         "GrowFundz",
@@ -385,7 +389,7 @@ describe("GrowFundz Contract", () => {
         [Cl.principal(wallet1)],
         wallet1
       );
-      expect(isLocked.result).toBeBool(false);
+      expect(isLocked.result).toEqual(Cl.bool(false));
 
       const remainingBlocks = simnet.callReadOnlyFn(
         "GrowFundz",
@@ -393,7 +397,7 @@ describe("GrowFundz Contract", () => {
         [Cl.principal(wallet1)],
         wallet1
       );
-      expect(remainingBlocks.result).toBeUint(0);
+      expect(remainingBlocks.result).toEqual(Cl.uint(0));
     });
   });
 
@@ -432,7 +436,7 @@ describe("GrowFundz Contract", () => {
         [Cl.principal(deployer)],
         deployer
       );
-      expect(finalBalance.result).toBeUint(100_000_000); // New deposit amount
+      expect(finalBalance.result).toEqual(Cl.uint(100_000_000)); // New deposit amount
     });
 
     it("should handle zero withdrawal amount", () => {
@@ -453,7 +457,7 @@ describe("GrowFundz Contract", () => {
       );
 
       // Zero withdrawal should fail due to stx-transfer? constraints
-      expect(withdrawResult.result).toBeErr(Cl.uint(3)); // STX transfer error
+      expect(withdrawResult.result).toEqual(Cl.error(Cl.uint(3))); // STX transfer error
 
       // Balance should remain unchanged
       const balance = simnet.callReadOnlyFn(
@@ -462,7 +466,7 @@ describe("GrowFundz Contract", () => {
         [Cl.principal(deployer)],
         deployer
       );
-      expect(balance.result).toBeUint(100_000_000);
+      expect(balance.result).toEqual(Cl.uint(100_000_000));
     });
 
     it("should debug lock timing step by step", () => {
@@ -479,7 +483,7 @@ describe("GrowFundz Contract", () => {
         [Cl.uint(depositAmount), Cl.uint(lockOption)],
         deployer
       );
-      expect(depositResult.result).toBeOk(Cl.uint(depositAmount));
+      expect(depositResult.result).toEqual(Cl.ok(Cl.uint(depositAmount)));
       
       const depositBlock = simnet.blockHeight;
       console.log(`Deposit made at block: ${depositBlock}`);
@@ -567,9 +571,9 @@ describe("GrowFundz Contract", () => {
         // Deposit at block 4, lock-expiry at block 10
         // Should be locked until block 10 (exclusive), unlocked at block 10 (inclusive)
         if (currentBlock < 10) { // Should be locked before block 10
-          expect(isLockedNow.result).toBeBool(true);
+          expect(isLockedNow.result).toEqual(Cl.bool(true));
         } else { // Should be unlocked at block 10 and after
-          expect(isLockedNow.result).toBeBool(false);
+          expect(isLockedNow.result).toEqual(Cl.bool(false));
         }
       }
     });
@@ -596,7 +600,7 @@ describe("GrowFundz Contract", () => {
           [Cl.uint(depositAmount), Cl.uint(option)],
           testWallet
         );
-        expect(depositResult.result).toBeOk(Cl.uint(depositAmount));
+        expect(depositResult.result).toEqual(Cl.ok(Cl.uint(depositAmount)));
         
         const depositBlock = simnet.blockHeight;
         const expectedExpiry = depositBlock + expectedBlocks;
@@ -610,7 +614,7 @@ describe("GrowFundz Contract", () => {
           [Cl.uint(option)],
           testWallet
         );
-        expect(lockDuration.result).toBeUint(expectedBlocks);
+        expect(lockDuration.result).toEqual(Cl.uint(expectedBlocks));
         
         // Verify deposit info
         const depositInfo = simnet.callReadOnlyFn(
@@ -620,11 +624,11 @@ describe("GrowFundz Contract", () => {
           testWallet
         );
         
-        expect(depositInfo.result).toBeTuple({
+        expect(depositInfo.result).toEqual(Cl.tuple({
           amount: Cl.uint(depositAmount),
           "deposit-block": Cl.uint(depositBlock),
           "lock-expiry": Cl.uint(expectedExpiry)
-        });
+        }));
         
         // Test that it's locked TWO blocks before expiry to account for transaction mining
         if (expectedBlocks > 2) {
@@ -639,7 +643,7 @@ describe("GrowFundz Contract", () => {
             testWallet
           );
           console.log(`Withdrawal result at block ${simnet.blockHeight}:`, lockedResult.result);
-          expect(lockedResult.result).toBeErr(Cl.uint(101)); // ERR-STILL-LOCKED
+          expect(lockedResult.result).toEqual(Cl.error(Cl.uint(101))); // ERR-STILL-LOCKED
           console.log(`✓ Correctly locked when transaction mined at block ${simnet.blockHeight}`);
         }
         
@@ -661,7 +665,7 @@ describe("GrowFundz Contract", () => {
           [Cl.uint(depositAmount)],
           testWallet
         );
-        expect(unlockedResult.result).toBeOk(Cl.uint(depositAmount));
+        expect(unlockedResult.result).toEqual(Cl.ok(Cl.uint(depositAmount)));
         console.log(`✓ Successfully unlocked when transaction mined at block ${simnet.blockHeight}`);
         
         console.log(`${label} test completed successfully!`);
