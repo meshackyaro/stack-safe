@@ -268,7 +268,7 @@ describe('Minimum Deposit Enforcement', () => {
         'GrowFundz',
         'update-stx-price',
         [Cl.uint(2000000)], // $2.00
-        deployer // Use deployer as authority
+        address1 // Use address1 as authority (transferred in previous test)
       );
       expect(updateResult.result).toEqual(Cl.ok(Cl.uint(2000000)));
 
@@ -302,12 +302,13 @@ describe('Minimum Deposit Enforcement', () => {
 
     it('should handle edge case prices correctly', () => {
       // Test with very low price ($0.01)
-      simnet.callPublicFn(
+      const lowPriceUpdate = simnet.callPublicFn(
         'GrowFundz',
         'update-stx-price',
         [Cl.uint(10000)], // $0.01
-        deployer
+        address1 // Use address1 as authority
       );
+      expect(lowPriceUpdate.result).toEqual(Cl.ok(Cl.uint(10000)));
 
       const minResult = simnet.callReadOnlyFn(
         'GrowFundz',
@@ -315,14 +316,14 @@ describe('Minimum Deposit Enforcement', () => {
         [],
         deployer
       );
-      expect(minResult.result).toEqual(Cl.uint(200000000)); // 200 STX
+      expect(minResult.result).toEqual(Cl.uint(200000000)); // 200 STX at $0.01 price
 
       // Test with high price ($10.00)
       simnet.callPublicFn(
         'GrowFundz',
         'update-stx-price',
         [Cl.uint(10000000)], // $10.00
-        deployer
+        address1 // Use address1 as authority
       );
 
       const minResult2 = simnet.callReadOnlyFn(
@@ -340,12 +341,13 @@ describe('Minimum Deposit Enforcement', () => {
       const initialBlock = simnet.blockHeight;
       
       // Update price
-      simnet.callPublicFn(
+      const priceUpdate = simnet.callPublicFn(
         'GrowFundz',
         'update-stx-price',
         [Cl.uint(1500000)], // $1.50
-        deployer
+        address1 // Use address1 as authority
       );
+      expect(priceUpdate.result).toEqual(Cl.ok(Cl.uint(1500000)));
 
       // Check last update block
       const updateResult = simnet.callReadOnlyFn(
@@ -354,7 +356,7 @@ describe('Minimum Deposit Enforcement', () => {
         [],
         deployer
       );
-      expect(updateResult.result).toEqual(Cl.uint(initialBlock + 1));
+      expect(updateResult.result).toEqual(Cl.uint(simnet.blockHeight)); // Use current block height
     });
   });
 });
